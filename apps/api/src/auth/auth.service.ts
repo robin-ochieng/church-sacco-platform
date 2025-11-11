@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { SupabaseService } from '../supabase/supabase.service';
-import { PrismaService } from '../prisma/prisma.service';
+// import { PrismaService } from '../prisma/prisma.service'; // Not used - using Supabase SDK
 import { SignUpDto, SignInDto } from './dto';
 import { UserRole } from '@prisma/client';
 
@@ -13,7 +13,7 @@ export class AuthService {
 
   constructor(
     private readonly supabaseService: SupabaseService,
-    private readonly prismaService: PrismaService,
+    // private readonly prismaService: PrismaService, // Not used - using Supabase SDK instead
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -122,7 +122,7 @@ export class AuthService {
     }
   }
 
-  async signOut(userId: string) {
+  async signOut(_userId: string) {
     // In a production app, you might want to invalidate the refresh token
     // For now, just return success (client will clear tokens)
     return { message: 'Signed out successfully' };
@@ -169,6 +169,7 @@ export class AuthService {
                 this.configService.get<string>('JWT_SECRET'),
       });
 
+      // Regenerate tokens with the same user info (including branch_id)
       const tokens = await this.generateTokens(payload.sub, payload.email, payload.role);
       return tokens;
     } catch (error) {
@@ -177,7 +178,30 @@ export class AuthService {
   }
 
   private async generateTokens(userId: string, email: string, role: UserRole) {
-    const payload = { sub: userId, email, role };
+    // Fetch member's branch_id for RLS policies
+    let branchId: string | null = null;
+    
+    try {
+      const supabase = this.supabaseService.getAdminClient();
+      const { data: member } = await supabase
+        .from('Member')
+        .select('branchId')
+        .eq('userId', userId)
+        .single();
+      
+      branchId = member?.branchId || null;
+    } catch (error) {
+      this.logger.warn(`Could not fetch branchId for user ${userId}:`, error);
+      // Continue without branchId - some users (like new signups) may not have a member record yet
+    }
+
+    // Include branch_id in JWT payload for RLS policies
+    const payload = { 
+      sub: userId, 
+      email, 
+      role,
+      branch_id: branchId  // Required by RLS policies
+    };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

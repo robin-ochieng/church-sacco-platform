@@ -41,6 +41,7 @@ model Member {
   firstName             String
   lastName              String
   middleName            String?
+  email                 String   @unique // Member's email address
   guardianName          String?  // For minors
   idPassportNumber      String   @unique
   physicalAddress       String

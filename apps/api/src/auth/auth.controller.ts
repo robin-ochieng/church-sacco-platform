@@ -22,13 +22,13 @@ export class AuthController {
   @Post('signout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  async signOut(@Request() req) {
+  async signOut(@Request() req: any) {
     return this.authService.signOut(req.user.sub);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getCurrentUser(@Request() req) {
+  async getCurrentUser(@Request() req: any) {
     return this.authService.getCurrentUser(req.user.sub);
   }
 

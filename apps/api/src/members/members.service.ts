@@ -64,6 +64,7 @@ export class MembersService {
           firstName: createMemberDto.firstName,
           lastName: createMemberDto.lastName,
           middleName: createMemberDto.middleName,
+          email: createMemberDto.email,
           guardianName: createMemberDto.guardianName,
           idPassportNumber: createMemberDto.idPassportNumber,
           physicalAddress: createMemberDto.physicalAddress,

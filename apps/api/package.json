@@ -29,7 +29,8 @@
     "class-validator": "^0.14.0",
     "class-transformer": "^0.5.1",
     "reflect-metadata": "^0.2.1",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",
@@ -49,6 +50,8 @@
     "prettier": "^3.1.1",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "jsonwebtoken": "^9.0.2",
+    "@types/jsonwebtoken": "^9.0.5"
   }
 }

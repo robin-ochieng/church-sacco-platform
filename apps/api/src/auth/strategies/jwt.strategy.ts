@@ -7,7 +7,7 @@ import { SupabaseService } from '../../supabase/supabase.service';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     private readonly supabaseService: SupabaseService,
   ) {
     super({
