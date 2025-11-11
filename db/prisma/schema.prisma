@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users & Authentication
+model User {
+  id        String   @id
+  email     String   @unique
+  password  String
+  role      UserRole @default(MEMBER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  member Member?
+
+  @@map("User")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  TREASURER
+  SECRETARY
+  CHAIRMAN
+}
+
+// SACCO Members
+model Member {
+  id                    String   @id
+  userId                String   @unique
+  memberNumber          String   @unique
+  firstName             String
+  lastName              String
+  middleName            String?
+  guardianName          String?  // For minors
+  idPassportNumber      String   @unique
+  physicalAddress       String
+  poBox                 String?
+  telephone             String
+  telephoneAlt          String?  // Alternative phone
+  occupation            String?
+  employerName          String?
+  employerAddress       String?
+  passportPhotoUrl      String?  // Stored in Supabase Storage
+  dateOfBirth           DateTime
+  
+  // Referee/Referrer details
+  refereeName           String?
+  refereePhone          String?
+  refereeSignature      String?  // Could be signature image URL
+  
+  // Next of Kin (primary)
+  nextOfKinName         String
+  nextOfKinPhone        String
+  nextOfKinRelationship String
+  
+  // Witness details
+  witnessName           String?
+  witnessSignature      String?  // Signature image URL
+  witnessDate           DateTime?
+  
+  // Registration & Status
+  registrationFee       Decimal  @default(2000) @db.Decimal(10, 2)
+  joiningDate           DateTime @default(now())
+  membershipStatus      String   @default("ACTIVE")
+  memberSignature       String?  // Member signature image URL
+  
+  // Agreement acknowledgments
+  agreedToTerms         Boolean  @default(false)
+  agreedToRefundPolicy  Boolean  @default(false)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savings       Saving[]
+  shares        Share[]
+  loans         Loan[]
+  contributions Contribution[]
+  beneficiaries Beneficiary[]  // Multiple beneficiaries from Reg.01B
+
+  @@map("Member")
+}
+
+// Beneficiaries (from Reg.01B form)
+model Beneficiary {
+  id           String   @id
+  memberId     String
+  fullName     String
+  age          Int?
+  relationship String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("Beneficiary")
+}
+
+// Savings
+model Saving {
+  id           String      @id
+  memberId     String
+  type         SavingType  @default(REGULAR)
+  amount       Decimal     @db.Decimal(10, 2)
+  balance      Decimal     @default(0) @db.Decimal(10, 2)
+  interestRate Decimal     @default(0) @db.Decimal(5, 2)
+  startDate    DateTime    @default(now())
+  maturityDate DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("Saving")
+}
+
+enum SavingType {
+  REGULAR
+  FIXED
+  EMERGENCY
+}
+
+// Shares
+model Share {
+  id             String   @id
+  memberId       String
+  numberOfShares Int      @default(0)
+  shareValue     Decimal  @db.Decimal(10, 2)
+  totalValue     Decimal  @default(0) @db.Decimal(10, 2)
+  purchaseDate   DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("Share")
+}
+
+// Loans
+model Loan {
+  id                    String      @id
+  memberId              String
+  loanNumber            String      @unique
+  amount                Decimal     @db.Decimal(10, 2)
+  interestRate          Decimal     @db.Decimal(5, 2)
+  durationMonths        Int
+  status                LoanStatus  @default(PENDING)
+  purpose               String
+  applicationDate       DateTime    @default(now())
+  approvalDate          DateTime?
+  disbursementDate      DateTime?
+  balance               Decimal     @db.Decimal(10, 2)
+  monthlyPayment        Decimal     @db.Decimal(10, 2)
+  guarantorName         String
+  guarantorPhone        String
+  guarantorNationalId   String
+  collateralDescription String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  repayments Repayment[]
+
+  @@map("Loan")
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DISBURSED
+  REPAYING
+  COMPLETED
+  DEFAULTED
+}
+
+// Loan Repayments
+model Repayment {
+  id              String   @id
+  loanId          String
+  amount          Decimal  @db.Decimal(10, 2)
+  paymentDate     DateTime @default(now())
+  principalAmount Decimal  @db.Decimal(10, 2)
+  interestAmount  Decimal  @db.Decimal(10, 2)
+  balanceAfter    Decimal  @db.Decimal(10, 2)
+  paymentMethod   String   @default("CASH")
+  receiptNumber   String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@map("Repayment")
+}
+
+// Contributions
+model Contribution {
+  id               String           @id
+  memberId         String
+  type             ContributionType
+  amount           Decimal          @db.Decimal(10, 2)
+  contributionDate DateTime         @default(now())
+  paymentMethod    String           @default("CASH")
+  receiptNumber    String           @unique
+  description      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("Contribution")
+}
+
+enum ContributionType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  SPECIAL
+}

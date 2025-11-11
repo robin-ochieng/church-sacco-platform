@@ -1,0 +1,22 @@
+{
+  "name": "@ack-thiboro-sacco/db",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Database schemas, migrations, and seeds",
+  "scripts": {
+    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "db:seed": "tsx seeds/index.ts",
+    "db:studio": "prisma studio --schema=./prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=./prisma/schema.prisma --force"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.7.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
