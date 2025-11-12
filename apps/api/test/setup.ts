@@ -27,6 +27,7 @@ const requiredEnvVars = [
   'SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'JWT_SECRET',
+  'PII_ENCRYPTION_KEY',
 ];
 
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);

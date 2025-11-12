@@ -44,10 +44,16 @@ model Member {
   email                 String   @unique // Member's email address
   guardianName          String?  // For minors
   idPassportNumber      String   @unique
+  idNumberEncrypted     Bytes?
+  idLast4               String?  @db.VarChar(4)
   physicalAddress       String
   poBox                 String?
   telephone             String
+  phoneEncrypted        Bytes?
+  phoneLast4            String?  @db.VarChar(4)
   telephoneAlt          String?  // Alternative phone
+  phoneAltEncrypted     Bytes?
+  phoneAltLast4         String?  @db.VarChar(4)
   occupation            String?
   employerName          String?
   employerAddress       String?
@@ -62,6 +68,8 @@ model Member {
   // Next of Kin (primary)
   nextOfKinName         String
   nextOfKinPhone        String
+  nextOfKinPhoneEncrypted Bytes?
+  nextOfKinPhoneLast4   String?  @db.VarChar(4)
   nextOfKinRelationship String
   
   // Witness details
@@ -89,6 +97,10 @@ model Member {
   contributions Contribution[]
   beneficiaries Beneficiary[]  // Multiple beneficiaries from Reg.01B
 
+  @@index([idLast4])
+  @@index([phoneLast4])
+  @@index([phoneAltLast4])
+  @@index([nextOfKinPhoneLast4])
   @@map("Member")
 }
 

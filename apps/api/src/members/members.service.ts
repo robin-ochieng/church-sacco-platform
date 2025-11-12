@@ -1,7 +1,71 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateMemberDto, UpdateMemberDto, MemberQueryDto } from './dto';
+
+interface MemberRow {
+  id: string;
+  userId: string;
+  memberNumber: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  email: string;
+  guardianName: string | null;
+  idPassportNumber: string | null;
+  idLast4: string | null;
+  physicalAddress: string;
+  poBox: string | null;
+  telephone: string | null;
+  phoneLast4: string | null;
+  telephoneAlt: string | null;
+  phoneAltLast4: string | null;
+  occupation: string | null;
+  employerName: string | null;
+  employerAddress: string | null;
+  passportPhotoUrl: string | null;
+  dateOfBirth: string;
+  refereeName: string | null;
+  refereePhone: string | null;
+  refereeSignature: string | null;
+  nextOfKinName: string;
+  nextOfKinPhone: string | null;
+  nextOfKinPhoneLast4: string | null;
+  nextOfKinRelationship: string;
+  witnessName: string | null;
+  witnessSignature: string | null;
+  witnessDate: string | null;
+  registrationFee: number;
+  joiningDate: string;
+  membershipStatus: string;
+  memberSignature: string | null;
+  agreedToTerms: boolean;
+  agreedToRefundPolicy: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    isActive: boolean;
+  createdAt: string;
+  };
+  beneficiaries: Array<{
+    id: string;
+    fullName: string;
+    age: number | null;
+    relationship: string;
+  }>;
+  idNumberEncrypted?: Buffer | null;
+  phoneEncrypted?: Buffer | null;
+  phoneAltEncrypted?: Buffer | null;
+  nextOfKinPhoneEncrypted?: Buffer | null;
+}
 
 @Injectable()
 export class MembersService {
@@ -137,10 +201,23 @@ export class MembersService {
 
     let queryBuilder = supabase
       .from('Member')
-      .select(`
-        *,
+      .select(
+        `
+        id,
+        memberNumber,
+        firstName,
+        lastName,
+        email,
+        idLast4,
+        phoneLast4,
+        phoneAltLast4,
+        nextOfKinPhoneLast4,
+        membershipStatus,
+        createdAt,
         User!inner(email, role, isActive)
-      `, { count: 'exact' });
+      `,
+        { count: 'exact' }
+      );
 
     // Apply filters
     if (query.search) {
@@ -175,43 +252,13 @@ export class MembersService {
   }
 
   async findOne(id: string) {
-    const supabase = this.supabaseService.getAdminClient();
-
-    const { data, error } = await supabase
-      .from('Member')
-      .select(`
-        *,
-        User!inner(id, email, role, isActive, createdAt),
-        Beneficiary(id, fullName, age, relationship)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      throw new NotFoundException('Member not found');
-    }
-
-    return { member: data };
+    const member = await this.fetchMemberWithPII('id', id);
+    return { member };
   }
 
   async findByMemberNumber(memberNumber: string) {
-    const supabase = this.supabaseService.getAdminClient();
-
-    const { data, error } = await supabase
-      .from('Member')
-      .select(`
-        *,
-        User!inner(id, email, role, isActive, createdAt),
-        Beneficiary(id, fullName, age, relationship)
-      `)
-      .eq('memberNumber', memberNumber)
-      .single();
-
-    if (error || !data) {
-      throw new NotFoundException('Member not found');
-    }
-
-    return { member: data };
+    const member = await this.fetchMemberWithPII('memberNumber', memberNumber);
+    return { member };
   }
 
   async update(id: string, updateMemberDto: UpdateMemberDto) {
@@ -311,5 +358,60 @@ export class MembersService {
     }
 
     return { shares: data || [] };
+  }
+
+  private async fetchMemberWithPII(column: 'id' | 'memberNumber', value: string) {
+    const rows = await this.supabaseService.queryWithPII<MemberRow>(
+      `
+        SELECT
+          m.*,
+          json_build_object(
+            'id', u.id,
+            'email', u.email,
+            'role', u."role",
+            'isActive', u."isActive",
+            'createdAt', u."createdAt"
+          ) AS user,
+          COALESCE(
+            json_agg(
+              jsonb_build_object(
+                'id', b.id,
+                'fullName', b."fullName",
+                'age', b.age,
+                'relationship', b.relationship
+              )
+            ) FILTER (WHERE b.id IS NOT NULL),
+            '[]'::json
+          ) AS beneficiaries
+        FROM "MemberWithDecryptedPII" m
+        JOIN "User" u ON u.id = m."userId"
+        LEFT JOIN "Beneficiary" b ON b."memberId" = m.id
+        WHERE m.${column === 'id' ? 'id' : '"memberNumber"'} = $1
+        GROUP BY m.id, u.id
+      `,
+      [value]
+    );
+
+    const row = rows[0];
+
+    if (!row) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const {
+      idNumberEncrypted,
+      phoneEncrypted,
+      phoneAltEncrypted,
+      nextOfKinPhoneEncrypted,
+      beneficiaries,
+      user,
+      ...rest
+    } = row as MemberRow;
+
+    return {
+      ...rest,
+      Beneficiary: Array.isArray(beneficiaries) ? beneficiaries : [],
+      User: user,
+    };
   }
 }

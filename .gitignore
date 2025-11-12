@@ -23,6 +23,10 @@ out
 .env.test.local
 .env.production.local
 
+# Add apps\api\.env.test to ignore list
+apps/api/.env.test
+
+
 # Logs
 logs
 *.log
