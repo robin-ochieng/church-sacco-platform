@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { envValidationSchema } from '../src/config/env.validation';
 
 describe('Environment Variable Validation', () => {

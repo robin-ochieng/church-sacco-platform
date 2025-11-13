@@ -40,7 +40,16 @@ if (missingVars.length > 0) {
 }
 
 // Extend Jest matchers (optional)
-expect.extend({
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      toBeValidUUID(): R;
+    }
+  }
+}
+
+// Custom matcher implementation
+(global as any).expect?.extend?.({
   toBeValidUUID(received: string) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const pass = typeof received === 'string' && uuidRegex.test(received);
@@ -55,15 +64,24 @@ expect.extend({
   },
 });
 
-// Global test utilities
+// Mock console methods in tests
+const mockFn = () => {
+  let calls: any[] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  fn.mock = { calls };
+  return fn;
+};
+
 global.console = {
   ...console,
   // Suppress logs in tests unless explicitly needed
-  log: jest.fn(),
-  debug: jest.fn(),
-  info: jest.fn(),
+  log: mockFn(),
+  debug: mockFn(),
+  info: mockFn(),
   warn: console.warn, // Keep warnings
   error: console.error, // Keep errors
-};
+} as any;
 
 console.info('✅ Test environment setup complete');

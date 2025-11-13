@@ -1,0 +1,19 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "jest.autoRun": "off",
+  "jest.jestCommandLine": "pnpm test --",
+  "files.associations": {
+    "*.spec.ts": "typescript",
+    "*.e2e-spec.ts": "typescript"
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  }
+}
