@@ -1,8 +1,8 @@
 /// <reference types="jest" />
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, Controller, Get } from '@nestjs/common';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { Controller, Get, INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 
 // Test controller with a simple endpoint

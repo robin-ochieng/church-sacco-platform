@@ -1,7 +1,7 @@
 /// <reference types="jest" />
-import request from 'supertest';
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 
 describe('Health Check (e2e)', () => {
