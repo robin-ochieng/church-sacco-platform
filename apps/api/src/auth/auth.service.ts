@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException, ConflictException, Logger } from '@n
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
-// import { PrismaService } from '../prisma/prisma.service'; // Not used - using Supabase SDK
 import { SignUpDto, SignInDto } from './dto';
 import { UserRole } from '@prisma/client';
 
@@ -12,8 +12,8 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
+    private readonly prismaService: PrismaService,
     private readonly supabaseService: SupabaseService,
-    // private readonly prismaService: PrismaService, // Not used - using Supabase SDK instead
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -22,13 +22,10 @@ export class AuthService {
     const { email, password, role = UserRole.MEMBER } = signUpDto;
 
     try {
-      // Check if user already exists using Supabase
-      const supabase = this.supabaseService.getAdminClient();
-      const { data: existingUser } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', email)
-        .single();
+      // Check if user already exists
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { email },
+      });
 
       if (existingUser) {
         throw new ConflictException('User with this email already exists');
@@ -37,22 +34,16 @@ export class AuthService {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user using Supabase
-      const { data: newUser, error } = await supabase
-        .from('User')
-        .insert({
+      // Create user
+      const newUser = await this.prismaService.user.create({
+        data: {
+          id: crypto.randomUUID(),
           email,
           password: hashedPassword,
           role,
           isActive: true,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        this.logger.error('Error creating user:', error);
-        throw new Error('Failed to create user');
-      }
+        },
+      });
 
       // Generate tokens
       const tokens = await this.generateTokens(newUser.id, newUser.email, newUser.role);
@@ -79,15 +70,12 @@ export class AuthService {
     const { email, password } = signInDto;
 
     try {
-      // Fetch user using Supabase
-      const supabase = this.supabaseService.getAdminClient();
-      const { data: user, error } = await supabase
-        .from('User')
-        .select('*')
-        .eq('email', email)
-        .single();
+      // Fetch user
+      const user = await this.prismaService.user.findUnique({
+        where: { email },
+      });
 
-      if (error || !user) {
+      if (!user) {
         throw new UnauthorizedException('Invalid credentials');
       }
 
@@ -130,28 +118,23 @@ export class AuthService {
 
   async getCurrentUser(userId: string) {
     try {
-      const supabase = this.supabaseService.getAdminClient();
-      const { data: user, error } = await supabase
-        .from('User')
-        .select(`
-          id,
-          email,
-          role,
-          isActive,
-          createdAt,
-          Member (
-            id,
-            memberNumber,
-            firstName,
-            lastName,
-            telephone,
-            membershipStatus
-          )
-        `)
-        .eq('id', userId)
-        .single();
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+        include: {
+          member: {
+            select: {
+              id: true,
+              memberNumber: true,
+              firstName: true,
+              lastName: true,
+              telephone: true,
+              membershipStatus: true,
+            },
+          },
+        },
+      });
 
-      if (error || !user) {
+      if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
@@ -182,12 +165,10 @@ export class AuthService {
     let branchId: string | null = null;
     
     try {
-      const supabase = this.supabaseService.getAdminClient();
-      const { data: member } = await supabase
-        .from('Member')
-        .select('branchId')
-        .eq('userId', userId)
-        .single();
+      const member = await this.prismaService.member.findUnique({
+        where: { userId },
+        select: { branchId: true },
+      });
       
       branchId = member?.branchId || null;
     } catch (error) {

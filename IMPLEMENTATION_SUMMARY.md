@@ -6,6 +6,66 @@ Your ACK Thiboro SACCO Platform is now fully wired and ready for development!
 
 ---
 
+## 📋 Data Access Standard
+
+**IMPORTANT: We have standardized on ONE approach for database operations:**
+
+### ✅ **Use Prisma Client for ALL CRUD Operations**
+
+```typescript
+// ✅ CORRECT: Use Prisma for database CRUD
+await prismaService.user.findUnique({ where: { email } });
+await prismaService.member.create({ data: {...} });
+await prismaService.loan.findMany({ where: { memberId } });
+```
+
+### 🚫 **Do NOT use Supabase SDK for CRUD**
+
+```typescript
+// ❌ WRONG: Don't use Supabase SDK for CRUD
+await supabase.from('User').select('*').eq('email', email);
+await supabase.from('Member').insert({...});
+```
+
+### ✅ **Use Supabase SDK ONLY for:**
+
+1. **Authentication** - Supabase Auth (if using their auth service)
+2. **Storage** - File uploads to Supabase Storage buckets
+3. **PII Decryption** - Custom views with `pgcrypto` functions (`MemberWithDecryptedPII`)
+
+```typescript
+// ✅ CORRECT: Supabase for Auth & Storage only
+const supabase = supabaseService.getAdminClient();
+await supabase.storage.from('kyc').upload(path, file);
+
+// ✅ CORRECT: Supabase for PII views
+await supabaseService.queryWithPII<MemberRow>(`
+  SELECT * FROM "MemberWithDecryptedPII" WHERE id = $1
+`, [id]);
+```
+
+### Why This Standard?
+
+1. **Type Safety**: Prisma generates TypeScript types from your schema
+2. **Better DX**: Auto-completion, compile-time checks, refactoring support  
+3. **Transactions**: Native transaction support with `$transaction()`
+4. **Migrations**: Schema changes tracked via Prisma migrations
+5. **Consistency**: One way of doing things = less confusion
+
+### Migration Path
+
+- ✅ **Auth Service**: Refactored to Prisma (User CRUD)
+- ✅ **Members Service**: Refactored to Prisma (Member CRUD)
+- 📝 **Future Services**: Use Prisma from day one
+
+### Connection Requirements
+
+- Use **direct database URL** (not pgBouncer) in `DATABASE_URL`
+- Example: `postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres`
+- Prisma doesn't work well with connection poolers in transaction mode
+
+---
+
 ## 🚀 What's Running
 
 ### Development Servers
@@ -373,24 +433,149 @@ church-sacco-platform/
 
 ---
 
-## 🎯 Next Steps (Recommended)
+## 🚀 Next Steps
 
-1. **Add More Endpoints:**
-   - Savings transactions (deposits, withdrawals)
-   - Loan applications and approvals
-   - Share purchases
-   - Contribution tracking
+1. **Database Setup**
+   - Ensure `DATABASE_URL` points to direct database connection (not pgBouncer)
+   - Run migrations: `cd db && pnpm db:migrate`
+   - Generate Prisma client: `pnpm db:generate`
 
-2. **Frontend Development:**
-   - Login/Register pages
-   - Member dashboard
-   - Registration form
-   - Admin panel
+2. **Create KYC Storage Bucket**
+   - Follow `docs/KYC_STORAGE_SETUP.md` for Supabase bucket setup
+   - Apply RLS policies via Storage UI (see `docs/KYC_RLS_TROUBLESHOOTING.md`)
 
-3. **File Uploads:**
-   - Passport photos
-   - Member signatures
-   - Witness signatures
+3. **Start Development**
+   - API: `cd apps/api && pnpm dev` (port 4000)
+   - Web: `cd apps/web && pnpm dev` (port 3000)
+   - Both: `pnpm dev` from root
+
+4. **Test the System**
+   - Run API tests: `cd apps/api && pnpm test`
+   - Run Web tests: `cd apps/web && pnpm test`
+   - Visit: http://localhost:3000/health
+
+---
+
+## 📚 Quick Reference
+
+### Data Access Patterns
+
+```typescript
+// ✅ User CRUD (Prisma)
+import { PrismaService } from '../prisma/prisma.service';
+
+constructor(private prisma: PrismaService) {}
+
+await this.prisma.user.create({ data: {...} });
+await this.prisma.user.findUnique({ where: { email } });
+await this.prisma.user.update({ where: { id }, data: {...} });
+await this.prisma.user.delete({ where: { id } });
+
+// ✅ Member CRUD (Prisma)
+await this.prisma.member.findMany({
+  where: { membershipStatus: 'ACTIVE' },
+  include: { user: true, beneficiaries: true },
+  orderBy: { createdAt: 'desc' },
+});
+
+// ✅ Transactions (Prisma)
+await this.prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({ data: {...} });
+  const member = await tx.member.create({ data: { userId: user.id, ... } });
+  return { user, member };
+});
+
+// ✅ Storage Operations (Supabase)
+import { SupabaseService } from '../supabase/supabase.service';
+
+constructor(private supabase: SupabaseService) {}
+
+const admin = this.supabase.getAdminClient();
+await admin.storage.from('kyc').upload(path, file);
+await admin.storage.from('kyc').createSignedUrl(path, 3600);
+
+// ✅ PII Decryption (Supabase Custom View)
+await this.supabase.queryWithPII<MemberRow>(`
+  SELECT * FROM "MemberWithDecryptedPII" WHERE id = $1
+`, [memberId]);
+```
+
+### Environment Variables Checklist
+
+```bash
+# apps/api/.env
+NODE_ENV=development
+PORT=4000
+
+# Database (MUST be direct connection, not pgBouncer)
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.xxxxx.supabase.co:5432/postgres"
+
+# Supabase (for Auth & Storage)
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+# JWT
+JWT_SECRET="your-secret-key"
+JWT_EXPIRATION="1h"
+JWT_REFRESH_SECRET="your-refresh-secret"
+
+# PII Encryption
+PII_ENCRYPTION_KEY="base64-encoded-key"
+
+# CORS
+WEB_ORIGIN="http://localhost:3000"
+```
+
+---
+
+## 🎯 Architecture Decision: Prisma vs Supabase SDK
+
+### Decision Made: **Prisma for CRUD, Supabase for Auth/Storage**
+
+**Rationale:**
+1. **Type Safety**: Prisma generates types from schema automatically
+2. **Developer Experience**: Better IDE support, auto-completion
+3. **Transactions**: Native support with proper rollback
+4. **Testing**: Easier to mock and test Prisma operations
+5. **Schema Management**: Migrations tracked in version control
+
+**Trade-offs Accepted:**
+- ❌ Cannot use pgBouncer in transaction mode (Prisma limitation)
+- ✅ Direct database connections work fine for small-medium scale
+- ✅ Can add connection pooling at application level if needed (e.g., Prisma Data Proxy)
+
+**Supabase SDK Still Used For:**
+- ✅ Storage operations (file uploads, signed URLs)
+- ✅ Custom PII views with `pgcrypto` functions
+- ✅ Real-time subscriptions (if needed in future)
+
+---
+
+## 📖 Documentation Index
+
+- `README.md` - Project overview and setup
+- `IMPLEMENTATION_SUMMARY.md` (this file) - Development guide  
+- `docs/architecture.md` - System architecture with Mermaid diagrams
+- `docs/KYC_STORAGE_SETUP.md` - Supabase storage bucket setup
+- `docs/KYC_RLS_TROUBLESHOOTING.md` - RLS policy troubleshooting
+- `SUPABASE_SETUP.md` - Database setup and configuration
+- `db/README.md` - Database schema and migrations
+- `apps/api/docs/SECURITY_HARDENING.md` - Security features
+
+---
+
+## 🤝 Contributing
+
+When adding new features:
+
+1. **Use Prisma** for all database CRUD operations
+2. **Keep Supabase SDK** usage limited to Auth/Storage/PII views
+3. **Write tests** for all new services (see `apps/api/test/`)
+4. **Update docs** when changing architecture decisions
+5. **Follow existing patterns** in `auth.service.ts` and `members.service.ts`
+
+Happy coding! 🚀
    - Document uploads
 
 4. **Notifications:**

@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateMemberDto, UpdateMemberDto, MemberQueryDto } from './dto';
 
@@ -71,29 +72,26 @@ interface MemberRow {
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly supabaseService: SupabaseService,
+  ) {}
 
   async create(createMemberDto: CreateMemberDto) {
-    const supabase = this.supabaseService.getAdminClient();
-
     try {
       // Check if user email already exists
-      const { data: existingUser } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', createMemberDto.email)
-        .single();
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { email: createMemberDto.email },
+      });
 
       if (existingUser) {
         throw new ConflictException('User with this email already exists');
       }
 
       // Check if member number already exists
-      const { data: existingMember } = await supabase
-        .from('Member')
-        .select('id')
-        .eq('memberNumber', createMemberDto.memberNumber)
-        .single();
+      const existingMember = await this.prismaService.member.findUnique({
+        where: { memberNumber: createMemberDto.memberNumber },
+      });
 
       if (existingMember) {
         throw new ConflictException('Member number already exists');
@@ -102,86 +100,79 @@ export class MembersService {
       // Hash password
       const hashedPassword = await bcrypt.hash(createMemberDto.password, 10);
 
-      // Create user
-      const { data: user, error: userError } = await supabase
-        .from('User')
-        .insert({
-          email: createMemberDto.email,
-          password: hashedPassword,
-          role: 'MEMBER',
-          isActive: true,
-        })
-        .select()
-        .single();
+      // Create user and member in a transaction
+      const result = await this.prismaService.$transaction(async (prisma) => {
+        // Create user
+        const user = await prisma.user.create({
+          data: {
+            id: crypto.randomUUID(),
+            email: createMemberDto.email,
+            password: hashedPassword,
+            role: 'MEMBER',
+            isActive: true,
+          },
+        });
 
-      if (userError || !user) {
-        this.logger.error('Error creating user:', userError);
-        throw new Error('Failed to create user');
-      }
+        // Create member
+        const member = await prisma.member.create({
+          data: {
+            id: crypto.randomUUID(),
+            userId: user.id,
+            memberNumber: createMemberDto.memberNumber,
+            firstName: createMemberDto.firstName,
+            lastName: createMemberDto.lastName,
+            middleName: createMemberDto.middleName,
+            email: createMemberDto.email,
+            guardianName: createMemberDto.guardianName,
+            idPassportNumber: createMemberDto.idPassportNumber,
+            physicalAddress: createMemberDto.physicalAddress,
+            poBox: createMemberDto.poBox,
+            telephone: createMemberDto.telephone,
+            telephoneAlt: createMemberDto.telephoneAlt,
+            dateOfBirth: new Date(createMemberDto.dateOfBirth),
+            occupation: createMemberDto.occupation,
+            employerName: createMemberDto.employerName,
+            employerAddress: createMemberDto.employerAddress,
+            passportPhotoUrl: createMemberDto.passportPhotoUrl,
+            refereeName: createMemberDto.refereeName,
+            refereePhone: createMemberDto.refereePhone,
+            nextOfKinName: createMemberDto.nextOfKinName,
+            nextOfKinPhone: createMemberDto.nextOfKinPhone,
+            nextOfKinRelationship: createMemberDto.nextOfKinRelationship,
+            witnessName: createMemberDto.witnessName,
+            witnessDate: createMemberDto.witnessDate ? new Date(createMemberDto.witnessDate) : null,
+            registrationFee: createMemberDto.registrationFee || 2000,
+            joiningDate: new Date(),
+            agreedToTerms: createMemberDto.agreedToTerms || false,
+            agreedToRefundPolicy: createMemberDto.agreedToRefundPolicy || false,
+            membershipStatus: 'ACTIVE',
+          },
+        });
 
-      // Create member
-      const { data: member, error: memberError } = await supabase
-        .from('Member')
-        .insert({
-          userId: user.id,
-          memberNumber: createMemberDto.memberNumber,
-          firstName: createMemberDto.firstName,
-          lastName: createMemberDto.lastName,
-          middleName: createMemberDto.middleName,
-          email: createMemberDto.email,
-          guardianName: createMemberDto.guardianName,
-          idPassportNumber: createMemberDto.idPassportNumber,
-          physicalAddress: createMemberDto.physicalAddress,
-          poBox: createMemberDto.poBox,
-          telephone: createMemberDto.telephone,
-          telephoneAlt: createMemberDto.telephoneAlt,
-          dateOfBirth: createMemberDto.dateOfBirth,
-          occupation: createMemberDto.occupation,
-          employerName: createMemberDto.employerName,
-          employerAddress: createMemberDto.employerAddress,
-          passportPhotoUrl: createMemberDto.passportPhotoUrl,
-          refereeName: createMemberDto.refereeName,
-          refereePhone: createMemberDto.refereePhone,
-          nextOfKinName: createMemberDto.nextOfKinName,
-          nextOfKinPhone: createMemberDto.nextOfKinPhone,
-          nextOfKinRelationship: createMemberDto.nextOfKinRelationship,
-          witnessName: createMemberDto.witnessName,
-          witnessDate: createMemberDto.witnessDate,
-          registrationFee: createMemberDto.registrationFee || 2000,
-          agreedToTerms: createMemberDto.agreedToTerms || false,
-          agreedToRefundPolicy: createMemberDto.agreedToRefundPolicy || false,
-          membershipStatus: 'ACTIVE',
-        })
-        .select()
-        .single();
+        // Create beneficiaries if provided
+        if (createMemberDto.beneficiaries && createMemberDto.beneficiaries.length > 0) {
+          await prisma.beneficiary.createMany({
+            data: createMemberDto.beneficiaries.map((b) => ({
+              id: crypto.randomUUID(),
+              memberId: member.id,
+              fullName: b.fullName,
+              age: b.age,
+              relationship: b.relationship,
+            })),
+          });
+        }
 
-      if (memberError || !member) {
-        this.logger.error('Error creating member:', memberError);
-        // Rollback: delete the user
-        await supabase.from('User').delete().eq('id', user.id);
-        throw new Error('Failed to create member');
-      }
-
-      // Create beneficiaries if provided
-      if (createMemberDto.beneficiaries && createMemberDto.beneficiaries.length > 0) {
-        const beneficiariesData = createMemberDto.beneficiaries.map((b) => ({
-          memberId: member.id,
-          fullName: b.fullName,
-          age: b.age,
-          relationship: b.relationship,
-        }));
-
-        await supabase.from('Beneficiary').insert(beneficiariesData);
-      }
+        return { user, member };
+      });
 
       return {
         message: 'Member created successfully',
         member: {
-          id: member.id,
-          memberNumber: member.memberNumber,
-          firstName: member.firstName,
-          lastName: member.lastName,
-          email: user.email,
+          id: result.member.id,
+          memberNumber: result.member.memberNumber,
+          firstName: result.member.firstName,
+          lastName: result.member.lastName,
+          email: result.user.email,
         },
       };
     } catch (error) {
@@ -194,59 +185,63 @@ export class MembersService {
   }
 
   async findAll(query: MemberQueryDto) {
-    const supabase = this.supabaseService.getAdminClient();
     const page = query.page || 1;
     const limit = query.limit || 10;
-    const offset = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-    let queryBuilder = supabase
-      .from('Member')
-      .select(
-        `
-        id,
-        memberNumber,
-        firstName,
-        lastName,
-        email,
-        idLast4,
-        phoneLast4,
-        phoneAltLast4,
-        nextOfKinPhoneLast4,
-        membershipStatus,
-        createdAt,
-        User!inner(email, role, isActive)
-      `,
-        { count: 'exact' }
-      );
+    // Build where clause
+    const where: any = {};
 
-    // Apply filters
     if (query.search) {
-      queryBuilder = queryBuilder.or(
-        `firstName.ilike.%${query.search}%,lastName.ilike.%${query.search}%,memberNumber.ilike.%${query.search}%`
-      );
+      where.OR = [
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+        { memberNumber: { contains: query.search, mode: 'insensitive' } },
+      ];
     }
 
     if (query.status) {
-      queryBuilder = queryBuilder.eq('membershipStatus', query.status);
+      where.membershipStatus = query.status;
     }
 
-    // Apply pagination
-    queryBuilder = queryBuilder.range(offset, offset + limit - 1);
-
-    const { data, error, count } = await queryBuilder;
-
-    if (error) {
-      this.logger.error('Find all members error:', error);
-      throw new Error('Failed to fetch members');
-    }
+    // Get members and total count
+    const [data, total] = await Promise.all([
+      this.prismaService.member.findMany({
+        where,
+        select: {
+          id: true,
+          memberNumber: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          idLast4: true,
+          phoneLast4: true,
+          phoneAltLast4: true,
+          nextOfKinPhoneLast4: true,
+          membershipStatus: true,
+          createdAt: true,
+          user: {
+            select: {
+              email: true,
+              role: true,
+              isActive: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prismaService.member.count({ where }),
+    ]);
 
     return {
       data,
       meta: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   }
@@ -262,102 +257,79 @@ export class MembersService {
   }
 
   async update(id: string, updateMemberDto: UpdateMemberDto) {
-    const supabase = this.supabaseService.getAdminClient();
+    try {
+      const member = await this.prismaService.member.update({
+        where: { id },
+        data: updateMemberDto,
+      });
 
-    const { data, error } = await supabase
-      .from('Member')
-      .update(updateMemberDto)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error || !data) {
-      throw new NotFoundException('Member not found');
+      return {
+        message: 'Member updated successfully',
+        member,
+      };
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Member not found');
+      }
+      throw error;
     }
-
-    return {
-      message: 'Member updated successfully',
-      member: data,
-    };
   }
 
   async remove(id: string) {
-    const supabase = this.supabaseService.getAdminClient();
+    try {
+      // Get member to find userId
+      const member = await this.prismaService.member.findUnique({
+        where: { id },
+        select: { userId: true },
+      });
 
-    // Get member to find userId
-    const { data: member } = await supabase
-      .from('Member')
-      .select('userId')
-      .eq('id', id)
-      .single();
+      if (!member) {
+        throw new NotFoundException('Member not found');
+      }
 
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
+      // Delete user (cascades to member and related records via Prisma schema)
+      await this.prismaService.user.delete({
+        where: { id: member.userId },
+      });
 
-    // Delete user (cascades to member and related records)
-    const { error } = await supabase
-      .from('User')
-      .delete()
-      .eq('id', member.userId);
-
-    if (error) {
+      return { message: 'Member deleted successfully' };
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error.code === 'P2025') {
+        throw new NotFoundException('Member not found');
+      }
       this.logger.error('Delete member error:', error);
       throw new Error('Failed to delete member');
     }
-
-    return { message: 'Member deleted successfully' };
   }
 
   async getMemberSavings(id: string) {
-    const supabase = this.supabaseService.getAdminClient();
+    const savings = await this.prismaService.saving.findMany({
+      where: { memberId: id },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    const { data, error } = await supabase
-      .from('Saving')
-      .select('*')
-      .eq('memberId', id)
-      .order('createdAt', { ascending: false });
-
-    if (error) {
-      this.logger.error('Get member savings error:', error);
-      throw new Error('Failed to fetch savings');
-    }
-
-    return { savings: data || [] };
+    return { savings };
   }
 
   async getMemberLoans(id: string) {
-    const supabase = this.supabaseService.getAdminClient();
+    const loans = await this.prismaService.loan.findMany({
+      where: { memberId: id },
+      orderBy: { applicationDate: 'desc' },
+    });
 
-    const { data, error } = await supabase
-      .from('Loan')
-      .select('*')
-      .eq('memberId', id)
-      .order('applicationDate', { ascending: false });
-
-    if (error) {
-      this.logger.error('Get member loans error:', error);
-      throw new Error('Failed to fetch loans');
-    }
-
-    return { loans: data || [] };
+    return { loans };
   }
 
   async getMemberShares(id: string) {
-    const supabase = this.supabaseService.getAdminClient();
+    const shares = await this.prismaService.share.findMany({
+      where: { memberId: id },
+      orderBy: { purchaseDate: 'desc' },
+    });
 
-    const { data, error } = await supabase
-      .from('Share')
-      .select('*')
-      .eq('memberId', id)
-      .order('purchaseDate', { ascending: false });
-
-    if (error) {
-      this.logger.error('Get member shares error:', error);
-      throw new Error('Failed to fetch shares');
-    }
-
-    return { shares: data || [] };
+    return { shares };
   }
 
   private async fetchMemberWithPII(column: 'id' | 'memberNumber', value: string) {
