@@ -41,6 +41,7 @@ model Member {
   firstName             String
   lastName              String
   middleName            String?
+  gender                Gender   @default(OTHER)
   email                 String   @unique // Member's email address
   guardianName          String?  // For minors
   idPassportNumber      String   @unique
@@ -48,6 +49,7 @@ model Member {
   idLast4               String?  @db.VarChar(4)
   physicalAddress       String
   poBox                 String?
+  churchGroup           String?  // Church group membership
   telephone             String
   phoneEncrypted        Bytes?
   phoneLast4            String?  @db.VarChar(4)
@@ -61,6 +63,7 @@ model Member {
   dateOfBirth           DateTime
   
   // Referee/Referrer details
+  refereeMemberNo       String?  // Format: ATSC-YYYY-NNNN
   refereeName           String?
   refereePhone          String?
   refereeSignature      String?  // Could be signature image URL
@@ -83,6 +86,11 @@ model Member {
   membershipStatus      String   @default("ACTIVE")
   memberSignature       String?  // Member signature image URL
   
+  // Backoffice fields
+  branchId              String?
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  
   // Agreement acknowledgments
   agreedToTerms         Boolean  @default(false)
   agreedToRefundPolicy  Boolean  @default(false)
@@ -101,7 +109,14 @@ model Member {
   @@index([phoneLast4])
   @@index([phoneAltLast4])
   @@index([nextOfKinPhoneLast4])
+  @@index([memberNumber])
   @@map("Member")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
 // Beneficiaries (from Reg.01B form)

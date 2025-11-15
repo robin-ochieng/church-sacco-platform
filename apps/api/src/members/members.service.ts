@@ -1,13 +1,15 @@
 import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  Logger,
+    ConflictException,
+    Injectable,
+    Logger,
+    NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { CreateMemberDto, UpdateMemberDto, MemberQueryDto } from './dto';
+import { CreateMemberDto, MemberQueryDto, UpdateMemberDto } from './dto';
+import { EncryptionService } from './encryption.service';
+import { MemberNumberGenerator } from './member-number.generator';
 
 interface MemberRow {
   id: string;
@@ -75,6 +77,8 @@ export class MembersService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly supabaseService: SupabaseService,
+    private readonly memberNumberGenerator: MemberNumberGenerator,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   async create(createMemberDto: CreateMemberDto) {
@@ -88,17 +92,37 @@ export class MembersService {
         throw new ConflictException('User with this email already exists');
       }
 
-      // Check if member number already exists
-      const existingMember = await this.prismaService.member.findUnique({
-        where: { memberNumber: createMemberDto.memberNumber },
+      // Check if ID number already exists (requires checking against encrypted values)
+      const existingIdMember = await this.prismaService.member.findUnique({
+        where: { idPassportNumber: createMemberDto.idPassportNumber },
       });
 
-      if (existingMember) {
-        throw new ConflictException('Member number already exists');
+      if (existingIdMember) {
+        throw new ConflictException('ID/Passport number already registered');
       }
+
+      // Generate unique member number: ATSC-{YYYY}-{NNNN}
+      const memberNumber = await this.memberNumberGenerator.generateMemberNumber();
 
       // Hash password
       const hashedPassword = await bcrypt.hash(createMemberDto.password, 10);
+
+      // Encrypt PII fields
+      const idEncryption = this.encryptionService.encryptWithLast4(
+        createMemberDto.idPassportNumber,
+      );
+      const phoneEncryption = this.encryptionService.encryptWithLast4(
+        createMemberDto.telephone,
+      );
+      
+      // Encrypt optional phone fields
+      const phoneAltEncryption = createMemberDto.telephoneAlt
+        ? this.encryptionService.encryptWithLast4(createMemberDto.telephoneAlt)
+        : null;
+      
+      const nextOfKinPhoneEncryption = this.encryptionService.encryptWithLast4(
+        createMemberDto.nextOfKinPhone,
+      );
 
       // Create user and member in a transaction
       const result = await this.prismaService.$transaction(async (prisma) => {
@@ -118,34 +142,69 @@ export class MembersService {
           data: {
             id: crypto.randomUUID(),
             userId: user.id,
-            memberNumber: createMemberDto.memberNumber,
+            memberNumber,
             firstName: createMemberDto.firstName,
             lastName: createMemberDto.lastName,
             middleName: createMemberDto.middleName,
+            gender: createMemberDto.gender as any,
             email: createMemberDto.email,
             guardianName: createMemberDto.guardianName,
+            
+            // Store plaintext for queries + encrypted + last4
             idPassportNumber: createMemberDto.idPassportNumber,
+            idNumberEncrypted: idEncryption.encrypted,
+            idLast4: idEncryption.last4,
+            
             physicalAddress: createMemberDto.physicalAddress,
             poBox: createMemberDto.poBox,
+            churchGroup: createMemberDto.churchGroup,
+            
+            // Store plaintext + encrypted + last4 for phones
             telephone: createMemberDto.telephone,
+            phoneEncrypted: phoneEncryption.encrypted,
+            phoneLast4: phoneEncryption.last4,
+            
             telephoneAlt: createMemberDto.telephoneAlt,
+            phoneAltEncrypted: phoneAltEncryption?.encrypted,
+            phoneAltLast4: phoneAltEncryption?.last4,
+            
             dateOfBirth: new Date(createMemberDto.dateOfBirth),
             occupation: createMemberDto.occupation,
             employerName: createMemberDto.employerName,
             employerAddress: createMemberDto.employerAddress,
             passportPhotoUrl: createMemberDto.passportPhotoUrl,
+            
+            // Referee details
+            refereeMemberNo: createMemberDto.refereeMemberNo,
             refereeName: createMemberDto.refereeName,
             refereePhone: createMemberDto.refereePhone,
+            
+            // Next of kin
             nextOfKinName: createMemberDto.nextOfKinName,
             nextOfKinPhone: createMemberDto.nextOfKinPhone,
+            nextOfKinPhoneEncrypted: nextOfKinPhoneEncryption.encrypted,
+            nextOfKinPhoneLast4: nextOfKinPhoneEncryption.last4,
             nextOfKinRelationship: createMemberDto.nextOfKinRelationship,
+            
+            // Witness
             witnessName: createMemberDto.witnessName,
-            witnessDate: createMemberDto.witnessDate ? new Date(createMemberDto.witnessDate) : null,
+            witnessDate: createMemberDto.witnessDate 
+              ? new Date(createMemberDto.witnessDate) 
+              : null,
+            
+            // Registration
             registrationFee: createMemberDto.registrationFee || 2000,
             joiningDate: new Date(),
             agreedToTerms: createMemberDto.agreedToTerms || false,
             agreedToRefundPolicy: createMemberDto.agreedToRefundPolicy || false,
             membershipStatus: 'ACTIVE',
+            
+            // Backoffice fields
+            branchId: createMemberDto.branchId,
+            verifiedBy: createMemberDto.verifiedBy,
+            verifiedAt: createMemberDto.verifiedAt 
+              ? new Date(createMemberDto.verifiedAt) 
+              : null,
           },
         });
 
@@ -164,6 +223,8 @@ export class MembersService {
 
         return { user, member };
       });
+
+      this.logger.log(`Member created: ${memberNumber}`);
 
       return {
         message: 'Member created successfully',
