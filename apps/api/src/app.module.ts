@@ -9,6 +9,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MembersModule } from './members/members.module';
+import { KycModule } from './kyc/kyc.module';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
@@ -36,6 +37,7 @@ import { envValidationSchema } from './config/env.validation';
     AuthModule,
     UsersModule,
     MembersModule,
+    KycModule,
   ],
   controllers: [AppController],
   providers: [
