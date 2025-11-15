@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { idAndRefereeSchema, type IdAndRefereeFormData } from '../schemas';
+import { FileDropzone } from '@/components/FileDropzone';
+import { KycDocumentType } from '@/lib/api/kyc';
 
 interface IdAndRefereeStepProps {
   initialData?: Partial<IdAndRefereeFormData>;
@@ -10,7 +13,38 @@ interface IdAndRefereeStepProps {
   onBack: () => void;
 }
 
+interface KycUploadState {
+  file: File | null;
+  uploading: boolean;
+  uploaded: boolean;
+  error: string | null;
+  filePath: string | null;
+}
+
 export function IdAndRefereeStep({ initialData, onNext, onBack }: IdAndRefereeStepProps) {
+  const [kycUploads, setKycUploads] = useState<Record<KycDocumentType, KycUploadState>>({
+    [KycDocumentType.ID_FRONT]: {
+      file: null,
+      uploading: false,
+      uploaded: false,
+      error: null,
+      filePath: null,
+    },
+    [KycDocumentType.ID_BACK]: {
+      file: null,
+      uploading: false,
+      uploaded: false,
+      error: null,
+      filePath: null,
+    },
+    [KycDocumentType.PHOTO]: {
+      file: null,
+      uploading: false,
+      uploaded: false,
+      error: null,
+      filePath: null,
+    },
+  });
   const {
     register,
     handleSubmit,
@@ -20,11 +54,35 @@ export function IdAndRefereeStep({ initialData, onNext, onBack }: IdAndRefereeSt
     defaultValues: initialData,
   });
 
+  const handleFileSelect = (documentType: KycDocumentType) => (file: File) => {
+    setKycUploads((prev) => ({
+      ...prev,
+      [documentType]: {
+        ...prev[documentType],
+        file,
+        error: null,
+      },
+    }));
+  };
+
+  const handleFormSubmit = (data: IdAndRefereeFormData) => {
+    // Store file references in form data for later upload
+    const dataWithFiles = {
+      ...data,
+      kycFiles: {
+        idFront: kycUploads[KycDocumentType.ID_FRONT].file,
+        idBack: kycUploads[KycDocumentType.ID_BACK].file,
+        photo: kycUploads[KycDocumentType.PHOTO].file,
+      },
+    };
+    onNext(dataWithFiles as IdAndRefereeFormData);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onNext)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">ID Number & Referee</h2>
-        <p className="text-gray-600">Please provide your identification and referee details</p>
+        <h2 className="text-2xl font-bold">ID & KYC Documents</h2>
+        <p className="text-gray-600">Please provide your identification, referee details, and upload KYC documents</p>
       </div>
 
       {/* ID/Passport Number */}
@@ -115,6 +173,77 @@ export function IdAndRefereeStep({ initialData, onNext, onBack }: IdAndRefereeSt
           {errors.nextOfKinRelationship && (
             <p className="mt-1 text-sm text-red-600">{errors.nextOfKinRelationship.message}</p>
           )}
+        </div>
+      </div>
+
+      {/* KYC Document Uploads */}
+      <div className="border-t pt-6 mt-6">
+        <h3 className="text-lg font-semibold mb-4">KYC Document Uploads</h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Upload clear images of your identification documents. These will be verified during account approval.
+        </p>
+
+        <div className="space-y-6">
+          {/* ID Front */}
+          <FileDropzone
+            label="ID/Passport Front"
+            accept="image/jpeg,image/png,image/jpg"
+            maxSize={10}
+            onFileSelect={handleFileSelect(KycDocumentType.ID_FRONT)}
+            uploading={kycUploads[KycDocumentType.ID_FRONT].uploading}
+            uploadedFile={
+              kycUploads[KycDocumentType.ID_FRONT].file
+                ? {
+                    name: kycUploads[KycDocumentType.ID_FRONT].file!.name,
+                  }
+                : null
+            }
+            error={kycUploads[KycDocumentType.ID_FRONT].error}
+            required={false}
+          />
+
+          {/* ID Back */}
+          <FileDropzone
+            label="ID/Passport Back"
+            accept="image/jpeg,image/png,image/jpg"
+            maxSize={10}
+            onFileSelect={handleFileSelect(KycDocumentType.ID_BACK)}
+            uploading={kycUploads[KycDocumentType.ID_BACK].uploading}
+            uploadedFile={
+              kycUploads[KycDocumentType.ID_BACK].file
+                ? {
+                    name: kycUploads[KycDocumentType.ID_BACK].file!.name,
+                  }
+                : null
+            }
+            error={kycUploads[KycDocumentType.ID_BACK].error}
+            required={false}
+          />
+
+          {/* Photo */}
+          <FileDropzone
+            label="Profile Photo/Selfie"
+            accept="image/jpeg,image/png,image/jpg"
+            maxSize={10}
+            onFileSelect={handleFileSelect(KycDocumentType.PHOTO)}
+            uploading={kycUploads[KycDocumentType.PHOTO].uploading}
+            uploadedFile={
+              kycUploads[KycDocumentType.PHOTO].file
+                ? {
+                    name: kycUploads[KycDocumentType.PHOTO].file!.name,
+                  }
+                : null
+            }
+            error={kycUploads[KycDocumentType.PHOTO].error}
+            required={false}
+          />
+        </div>
+
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> KYC documents are optional during registration but may be required for account verification. 
+            You can upload them later from your profile page.
+          </p>
         </div>
       </div>
 

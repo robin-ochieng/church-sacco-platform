@@ -44,6 +44,7 @@ export interface MemberResponse {
     lastName: string;
     email: string;
   };
+  access_token?: string; // JWT token for authenticated requests
 }
 
 export async function registerMember(data: RegistrationData): Promise<MemberResponse> {

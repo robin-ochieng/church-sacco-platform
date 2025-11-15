@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerMember, type RegistrationData } from '../lib/api/members';
+import { uploadKycDocument, KycDocumentType } from '../lib/api/kyc';
+
+interface KycFiles {
+  idFront?: File | null;
+  idBack?: File | null;
+  photo?: File | null;
+}
 
 interface FormData {
   // Step 1: Personal Info
@@ -23,6 +30,7 @@ interface FormData {
   nextOfKinName: string;
   nextOfKinPhone: string;
   nextOfKinRelationship: string;
+  kycFiles?: KycFiles;
 
   // Step 4: Review & Submit
   email: string;
@@ -69,8 +77,8 @@ export function useRegistrationForm() {
         throw new Error('Email and password are required');
       }
 
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, emailOptional, ...apiData } = completeData as FormData;
+      // Remove confirmPassword and kycFiles before sending to API
+      const { confirmPassword, emailOptional, kycFiles, ...apiData } = completeData as FormData;
 
       const registrationData: RegistrationData = {
         ...apiData,
@@ -81,6 +89,47 @@ export function useRegistrationForm() {
       };
 
       const result = await registerMember(registrationData);
+
+      // Upload KYC documents if provided (non-blocking)
+      if (kycFiles && result.member.id) {
+        const uploadPromises: Promise<any>[] = [];
+
+        if (kycFiles.idFront) {
+          uploadPromises.push(
+            uploadKycDocument(
+              result.member.id,
+              kycFiles.idFront,
+              KycDocumentType.ID_FRONT,
+              result.access_token || '',
+            ).catch((err) => console.error('ID Front upload failed:', err))
+          );
+        }
+
+        if (kycFiles.idBack) {
+          uploadPromises.push(
+            uploadKycDocument(
+              result.member.id,
+              kycFiles.idBack,
+              KycDocumentType.ID_BACK,
+              result.access_token || '',
+            ).catch((err) => console.error('ID Back upload failed:', err))
+          );
+        }
+
+        if (kycFiles.photo) {
+          uploadPromises.push(
+            uploadKycDocument(
+              result.member.id,
+              kycFiles.photo,
+              KycDocumentType.PHOTO,
+              result.access_token || '',
+            ).catch((err) => console.error('Photo upload failed:', err))
+          );
+        }
+
+        // Wait for all uploads (but don't block success if they fail)
+        await Promise.allSettled(uploadPromises);
+      }
 
       // Success - redirect to success page
       router.push(`/register/success?memberNumber=${result.member.memberNumber}`);
