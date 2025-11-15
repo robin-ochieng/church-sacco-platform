@@ -104,6 +104,7 @@ model Member {
   loans         Loan[]
   contributions Contribution[]
   beneficiaries Beneficiary[]  // Multiple beneficiaries from Reg.01B
+  kyc           MemberKyc?     // KYC documents
 
   @@index([idLast4])
   @@index([phoneLast4])
@@ -132,6 +133,24 @@ model Beneficiary {
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@map("Beneficiary")
+}
+
+// KYC Documents
+model MemberKyc {
+  id           String    @id @default(cuid())
+  memberId     String    @unique
+  idFrontKey   String?   // Supabase Storage key for ID front image
+  idBackKey    String?   // Supabase Storage key for ID back image
+  photoKey     String?   // Supabase Storage key for member photo/selfie
+  verifiedBy   String?   // User ID of admin/clerk who verified
+  verifiedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("MemberKyc")
 }
 
 // Savings
