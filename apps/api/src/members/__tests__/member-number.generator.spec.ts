@@ -1,6 +1,8 @@
+/// <reference types="jest" />
+
 import { Test, TestingModule } from '@nestjs/testing';
-import { MemberNumberGenerator } from '../member-number.generator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MemberNumberGenerator } from '../member-number.generator';
 
 describe('MemberNumberGenerator', () => {
   let generator: MemberNumberGenerator;
