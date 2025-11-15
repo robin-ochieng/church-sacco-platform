@@ -29,6 +29,9 @@ export function FileDropzone({
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
+  // Generate unique ID for accessibility
+  const inputId = `file-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
+
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -100,7 +103,7 @@ export function FileDropzone({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
 
@@ -162,11 +165,13 @@ export function FileDropzone({
           onDrop={handleDrop}
         >
           <input
+            id={inputId}
             type="file"
             accept={accept}
             onChange={handleChange}
             disabled={uploading}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            aria-label={label}
           />
 
           <div className="text-center">
