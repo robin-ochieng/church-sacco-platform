@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{receiptNumber}} • Teller Receipt • {{appName}}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --primary: #0f172a;
+      --accent: #0ea5e9;
+      --muted: #64748b;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      padding: 32px;
+      background: #f8fafc;
+      color: var(--primary);
+    }
+
+    .receipt {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .meta span {
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    section {
+      margin-top: 24px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    section h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px 16px;
+      margin: 0;
+    }
+
+    dt {
+      font-size: 13px;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    dd {
+      margin: 4px 0 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .amount {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 8px 0;
+      color: var(--accent);
+    }
+
+    .qr {
+      text-align: center;
+    }
+
+    .qr img {
+      width: 140px;
+      height: 140px;
+    }
+
+    footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+
+    .verification {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .verification strong {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <header>
+      <div>
+        <h1>{{appName}}</h1>
+        <div class="meta">
+          <div>
+            <span>Receipt Number</span>
+            <div>{{receiptNumber}}</div>
+          </div>
+          <div>
+            <span>Generated</span>
+            <div>{{postedAt}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="qr">
+        <img src="{{qrCode}}" alt="QR Code" />
+        <div class="verification">Scan to verify</div>
+      </div>
+    </header>
+
+    <section>
+      <h2>Member Details</h2>
+      <dl>
+        <div>
+          <dt>Name</dt>
+          <dd>{{memberName}}</dd>
+        </div>
+        <div>
+          <dt>Member Number</dt>
+          <dd>{{memberNumber}}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{memberEmail}}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Transaction</h2>
+      <div class="amount">{{amount}}</div>
+      <dl>
+        <div>
+          <dt>Type</dt>
+          <dd>{{transactionType}}</dd>
+        </div>
+        <div>
+          <dt>Channel</dt>
+          <dd>{{channel}}</dd>
+        </div>
+        <div>
+          <dt>Value Date</dt>
+          <dd>{{valueDate}}</dd>
+        </div>
+        <div>
+          <dt>Reference</dt>
+          <dd>{{reference}}</dd>
+        </div>
+        <div>
+          <dt>Narration</dt>
+          <dd>{{narration}}</dd>
+        </div>
+        <div>
+          <dt>Balance After</dt>
+          <dd>{{balanceAfter}}</dd>
+        </div>
+        <div>
+          <dt>Teller</dt>
+          <dd>{{tellerEmail}}</dd>
+        </div>
+        <div>
+          <dt>Branch</dt>
+          <dd>{{branchId}}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <footer>
+      <div class="verification">
+        <strong>Verify Online:</strong>
+        <div>{{verificationUrl}}</div>
+      </div>
+      <div>
+        Receipt generated automatically by {{appName}} Cashier module.
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

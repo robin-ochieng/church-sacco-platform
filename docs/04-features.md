@@ -63,11 +63,23 @@ The Church SACCO Platform provides comprehensive features for managing all aspec
   - Automatic interest calculation
   - Maturity date tracking
 
-- ⏳ **Deposit Operations** (Planned)
+- ✅ **Deposit Operations** (P1.3 Complete)
   - Cash deposits
   - Bank transfers
-  - Mobile money integration
-  - Receipt generation
+  - Mobile money (M-Pesa) integration
+  - Cheque deposits
+  - Automatic receipt generation
+  - Real-time member search
+  - Multi-channel support
+  - Teller interface with 16 RTL tests
+
+- ✅ **Transaction Statements** (P1.4 Complete)
+  - Date range filtering
+  - Transaction type filtering
+  - Server-side running balance calculation
+  - Opening/closing balance
+  - Total deposits/withdrawals summary
+  - Comprehensive E2E test suite
 
 - ⏳ **Withdrawal Operations** (Planned)
   - Withdrawal requests
@@ -174,30 +186,66 @@ The Church SACCO Platform provides comprehensive features for managing all aspec
   - Payment tracking
   - Arrears management
 
+## 🤖 Automated Processing
+
+### Monthly Charge Automation (P1.5 Complete)
+
+- ✅ **Automated Charges**
+  - KES 100 monthly charge for all active members
+  - Scheduled execution: 1st of month at 02:00 EAT
+  - BullMQ job queue with Redis backend
+  - Retry logic (3 attempts with exponential backoff)
+
+- ✅ **Administrative Controls**
+  - Manual execution API endpoint
+  - Date range specification
+  - Job status monitoring
+  - Success/failure tracking
+
+- ✅ **Safety Features**
+  - Duplicate charge prevention
+  - Idempotent operations
+  - Individual error isolation
+  - Comprehensive audit trail
+
+- ✅ **Monitoring & Reporting**
+  - Real-time job status
+  - Success/failure counts
+  - Detailed error reporting
+  - Audit log integration
+
 ## 🧾 Receipt & Documentation
 
 ### Automated Receipt Generation
 
-- ✅ **Receipt Format**: `BR{branch}-YYYYMM-{NNNNN}`
-  - Branch-specific sequences
-  - Monthly sequence reset
-  - 5-digit sequential numbering
+- ✅ **Receipt Format**: `RCP-YYYY-NNNNNN`
+  - Universal sequence across all branches
+  - Year-based reset
+  - 6-digit sequential numbering
+  - Alternative: `BR{branch}-YYYYMM-{NNNNN}` for branch-specific
 
 - ✅ **Receipt Types**
+  - Deposit receipts (all channels)
   - Loan repayment receipts
   - Contribution receipts
-  - (Future: Savings, shares, withdrawals)
+  - Monthly charge receipts
 
 - ✅ **Receipt Features**
   - Auto-generated on transaction
   - Immutable (cannot be changed)
   - Unique per transaction
   - Concurrency-safe generation
+  - QR code for verification
+  - Print-ready format
 
-- ⏳ **Receipt Printing** (Planned)
-  - PDF generation
-  - Email receipt
-  - SMS receipt
+- ✅ **Receipt Generation & Distribution** (Implemented)
+  - PDF generation with Puppeteer
+  - HTML templates with CSS styling
+  - QR code embedding for verification
+  - Browser print functionality
+  - Receipt preview before print
+  - ⏳ Email receipt (Planned)
+  - ⏳ SMS receipt (Planned)
   - Print receipt
 
 ### Document Management

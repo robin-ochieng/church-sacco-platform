@@ -39,7 +39,11 @@ export default function RegisterPage() {
   };
 
   const handleReviewSubmit = async (data: ReviewSubmitFormData) => {
-    await submitRegistration(data);
+    try {
+      await submitRegistration(data);
+    } catch {
+      // Error state already handled inside useRegistrationForm
+    }
   };
 
   return (
@@ -108,14 +112,14 @@ export default function RegisterPage() {
           {currentStep === 1 && (
             <PersonalInfoStep
               initialData={formData}
-              onSubmit={handlePersonalInfoSubmit}
+              onNext={handlePersonalInfoSubmit}
             />
           )}
 
           {currentStep === 2 && (
             <AddressInfoStep
               initialData={formData}
-              onSubmit={handleAddressInfoSubmit}
+              onNext={handleAddressInfoSubmit}
               onBack={prevStep}
             />
           )}
@@ -123,7 +127,7 @@ export default function RegisterPage() {
           {currentStep === 3 && (
             <IdAndRefereeStep
               initialData={formData}
-              onSubmit={handleIdAndRefereeSubmit}
+              onNext={handleIdAndRefereeSubmit}
               onBack={prevStep}
             />
           )}

@@ -1,13 +1,19 @@
 /// <reference types="jest" />
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { AuthService } from '../src/auth/auth.service';
-import { SupabaseService } from '../src/supabase/supabase.service';
-import { PrismaService } from '../src/prisma/prisma.service';
+import { Test, TestingModule } from '@nestjs/testing';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as bcrypt from 'bcrypt';
+import { AuthService } from '../src/auth/auth.service';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { SupabaseService } from '../src/supabase/supabase.service';
+
+// Check if Supabase is configured AND reachable
+// Skip these tests if using local Docker DB instead of Supabase
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const isLocalSupabase = supabaseUrl.includes('localhost') || supabaseUrl.includes('127.0.0.1');
+const supabaseConfigured = !isLocalSupabase && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * RLS (Row Level Security) Integration Test Suite
@@ -23,7 +29,7 @@ import * as bcrypt from 'bcrypt';
  * 3. Test database should be isolated from production
  */
 
-describe('RLS Integration Tests', () => {
+(supabaseConfigured ? describe : describe.skip)('RLS Integration Tests', () => {
   let app: INestApplication;
   let authService: AuthService;
   let supabaseService: SupabaseService;

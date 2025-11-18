@@ -4,6 +4,14 @@
 
 The Church SACCO Platform uses **PostgreSQL 15+** as the primary database, hosted on **Supabase Cloud**. The database is designed with security, auditability, and scalability as core principles.
 
+### Implemented Features (Phase 1 Complete)
+- ✅ Multi-channel deposits (Cash, M-Pesa, Bank Transfer, Cheque)
+- ✅ Automated receipt generation with QR codes
+- ✅ Transaction statements with running balance calculation
+- ✅ Automated monthly charges (KES 100 per active member)
+- ✅ Comprehensive transaction tracking
+- ✅ Row-Level Security (RLS) policies
+
 ## 📊 Entity Relationship Diagram
 
 ```

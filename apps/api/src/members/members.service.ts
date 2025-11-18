@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateMemberDto, MemberQueryDto, UpdateMemberDto } from './dto';
+import { LedgerEntryDto, StatementQueryDto, StatementResponseDto } from './dto/statement.dto';
 import { EncryptionService } from './encryption.service';
 import { MemberNumberGenerator } from './member-number.generator';
 
@@ -445,6 +446,144 @@ export class MembersService {
       ...rest,
       Beneficiary: Array.isArray(beneficiaries) ? beneficiaries : [],
       User: user,
+    };
+  }
+
+  /**
+   * Get member statement with ledger entries and running balance
+   * @param id Member ID
+   * @param query Statement query parameters
+   * @returns Statement with transactions and running balance
+   */
+  async getStatement(id: string, query: StatementQueryDto): Promise<StatementResponseDto> {
+    // 1. Verify member exists
+    const member = await this.prismaService.member.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        memberNumber: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException(`Member with ID ${id} not found`);
+    }
+
+    // 2. Build date range filters
+    const startDate = query.s ? new Date(query.s) : new Date('2000-01-01');
+    const endDate = query.e ? new Date(query.e) : new Date();
+    
+    // Set end date to end of day
+    endDate.setHours(23, 59, 59, 999);
+
+    // 3. Build transaction filters
+    const whereClause: any = {
+      memberId: id,
+      status: 'POSTED', // Only include posted transactions
+      valueDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+
+    if (query.type) {
+      whereClause.type = query.type;
+    }
+
+    // 4. Get opening balance (sum of all transactions before start date)
+    const openingTransactions = await this.prismaService.transaction.aggregate({
+      where: {
+        memberId: id,
+        status: 'POSTED',
+        valueDate: {
+          lt: startDate,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    const openingBalance = Number(openingTransactions._sum.amount || 0);
+
+    // 5. Fetch transactions in period, ordered by date ascending
+    const transactions = await this.prismaService.transaction.findMany({
+      where: whereClause,
+      orderBy: [
+        { valueDate: 'asc' },
+        { createdAt: 'asc' }, // Secondary sort by creation time
+      ],
+      select: {
+        id: true,
+        valueDate: true,
+        type: true,
+        channel: true,
+        reference: true,
+        narration: true,
+        amount: true,
+        receiptNumber: true,
+        status: true,
+        cashierId: true,
+      },
+    });
+
+    // 6. Compute running balance for each transaction
+    let runningBalance = openingBalance;
+    const ledgerEntries: LedgerEntryDto[] = transactions.map((txn) => {
+      const amount = Number(txn.amount);
+      
+      // Determine if transaction is debit or credit
+      const isDebit = txn.type === 'WITHDRAWAL' || txn.type === 'ADJUSTMENT';
+      const debit = isDebit ? Math.abs(amount) : 0;
+      const credit = isDebit ? 0 : Math.abs(amount);
+
+      // Update running balance
+      runningBalance += (credit - debit);
+
+      return {
+        id: txn.id,
+        date: txn.valueDate,
+        type: txn.type,
+        channel: txn.channel,
+        reference: txn.reference,
+        narration: txn.narration,
+        debit,
+        credit,
+        balance: runningBalance,
+        receiptNumber: txn.receiptNumber,
+        status: txn.status,
+        cashierId: txn.cashierId,
+      };
+    });
+
+    // 7. Calculate summary statistics
+    const totalDeposits = ledgerEntries.reduce((sum, entry) => sum + entry.credit, 0);
+    const totalWithdrawals = ledgerEntries.reduce((sum, entry) => sum + entry.debit, 0);
+    const closingBalance = runningBalance;
+
+    // 8. Return statement
+    return {
+      member: {
+        id: member.id,
+        memberNumber: member.memberNumber,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        email: member.email,
+      },
+      period: {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+      openingBalance,
+      closingBalance,
+      totalDeposits,
+      totalWithdrawals,
+      transactions: ledgerEntries,
+      transactionCount: ledgerEntries.length,
+      generatedAt: new Date(),
     };
   }
 }

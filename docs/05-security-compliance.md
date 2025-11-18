@@ -198,6 +198,7 @@ CREATE TABLE "audit_log" (
   before_json    JSONB,
   after_json     JSONB,
   changed_fields TEXT[],
+  metadata       JSONB,            -- Additional context (e.g., triggeredBy, period)
   at             TIMESTAMPTZ
 );
 

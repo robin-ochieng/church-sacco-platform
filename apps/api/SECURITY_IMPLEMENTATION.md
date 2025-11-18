@@ -140,6 +140,16 @@ Comprehensive documentation including:
 - Troubleshooting guide
 - Security checklist
 
+### 9. QR Receipt Verification Endpoint
+
+- **Route**: `GET /api/v1/verify/receipt/:receiptNumber`
+- **Visibility**: Public, rate-limited by global throttler
+- **Response**: Metadata (member, amount, teller, timestamps) used to validate PDF QR scans
+- **Hardening Notes**:
+  - Sanitizes receipt lookup via Prisma unique query
+  - Returns 404 for unknown/expired receipt numbers
+  - Intended for read-only verification, no PII beyond member display name
+
 ## Files Created/Modified
 
 ### Created:

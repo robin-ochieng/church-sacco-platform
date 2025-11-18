@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { KycController } from './kyc.controller';
-import { KycService } from './kyc.service';
+import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import { AuthModule } from '../auth/auth.module';
+import { KycController } from './kyc.controller';
+import { KycService } from './kyc.service';
 
 @Module({
   imports: [AuthModule],

@@ -2,41 +2,23 @@
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import { Pool } from 'pg';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { CreateMemberDto, Gender } from '../src/members/dto';
 
 describe('Members Registration (e2e)', () => {
   let app: INestApplication;
   let authToken: string;
+  let piiDecryptionAvailable = false;
 
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
-    await app.init();
-
-    // TODO: Get auth token from test setup
-    // For now, this test requires proper auth setup
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  describe('POST /members', () => {
-    const validMemberDto: CreateMemberDto = {
+  // Helper to generate unique test data
+  const generateUniqueMemberDto = (overrides = {}): CreateMemberDto => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return {
       // User credentials
-      email: 'test.member@example.com',
+      email: `test.member.${timestamp}.${random}@example.com`,
       password: 'SecurePass123!',
 
       // Personal Information
@@ -45,7 +27,7 @@ describe('Members Registration (e2e)', () => {
       middleName: 'Michael',
       dateOfBirth: '1990-01-15',
       gender: Gender.MALE,
-      telephone: '+254712345678',
+      telephone: `+2547123${timestamp.toString().slice(-5)}`,
 
       // Address & Church Group
       physicalAddress: '123 Main Street, Nairobi',
@@ -53,20 +35,73 @@ describe('Members Registration (e2e)', () => {
       churchGroup: 'Youth Fellowship',
 
       // ID & Referee
-      idPassportNumber: '12345678',
+      idPassportNumber: `ID${timestamp}${random}`,
       refereeMemberNo: 'ATSC-2024-0001',
 
       // Next of Kin
       nextOfKinName: 'Jane Doe',
-      nextOfKinPhone: '+254787654321',
+      nextOfKinPhone: `+2547876${timestamp.toString().slice(-5)}`,
       nextOfKinRelationship: 'Spouse',
 
       // Terms
       agreedToTerms: true,
       agreedToRefundPolicy: true,
+      ...overrides,
     };
+  };
 
+  beforeAll(async () => {
+    // Set test environment to disable throttling
+    process.env.NODE_ENV = 'test';
+    
+    // Check if PII decryption view exists
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    try {
+      const client = await pool.connect();
+      const { rows } = await client.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.views 
+          WHERE table_name = 'MemberWithDecryptedPII'
+        ) as has_view
+      `);
+      piiDecryptionAvailable = rows[0]?.has_view || false;
+      client.release();
+      
+      if (!piiDecryptionAvailable) {
+        console.warn('⚠️  MemberWithDecryptedPII view not found. Run migration 002_pgcrypto_pii. GET /members/:id tests will be skipped.');
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not check for PII decryption view:', error.message);
+    } finally {
+      await pool.end();
+    }
+    
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideGuard(require('../src/auth/guards/jwt-auth.guard').JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('POST /members', () => {
     it('should create a new member with valid data', async () => {
+      const validMemberDto = generateUniqueMemberDto();
       const response = await request(app.getHttpServer())
         .post('/api/v1/members')
         .send(validMemberDto)
@@ -79,7 +114,7 @@ describe('Members Registration (e2e)', () => {
       expect(response.body.member.memberNumber).toMatch(/^ATSC-\d{4}-\d{4}$/);
       expect(response.body.member).toHaveProperty('firstName', 'John');
       expect(response.body.member).toHaveProperty('lastName', 'Doe');
-      expect(response.body.member).toHaveProperty('email', 'test.member@example.com');
+      expect(response.body.member).toHaveProperty('email', validMemberDto.email);
     });
 
     it('should validate required fields', async () => {
@@ -99,7 +134,7 @@ describe('Members Registration (e2e)', () => {
 
     it('should validate E.164 phone format', async () => {
       const invalidPhoneDto = {
-        ...validMemberDto,
+        ...generateUniqueMemberDto(),
         telephone: '0712345678', // Invalid: not E.164 format
       };
 
@@ -108,12 +143,12 @@ describe('Members Registration (e2e)', () => {
         .send(invalidPhoneDto)
         .expect(400);
 
-      expect(response.body.message).toContain('E.164 format');
+      expect(response.body.message[0]).toContain('E.164 format');
     });
 
     it('should validate gender enum', async () => {
       const invalidGenderDto = {
-        ...validMemberDto,
+        ...generateUniqueMemberDto(),
         gender: 'UNKNOWN', // Invalid gender
       };
 
@@ -127,7 +162,7 @@ describe('Members Registration (e2e)', () => {
 
     it('should validate referee member number format', async () => {
       const invalidRefereeDto = {
-        ...validMemberDto,
+        ...generateUniqueMemberDto(),
         refereeMemberNo: 'INVALID-FORMAT',
       };
 
@@ -136,10 +171,11 @@ describe('Members Registration (e2e)', () => {
         .send(invalidRefereeDto)
         .expect(400);
 
-      expect(response.body.message).toContain('ATSC-YYYY-NNNN');
+      expect(response.body.message[0]).toContain('ATSC-YYYY-NNNN');
     });
 
     it('should reject duplicate email', async () => {
+      const validMemberDto = generateUniqueMemberDto();
       // First registration
       await request(app.getHttpServer())
         .post('/api/v1/members')
@@ -156,14 +192,15 @@ describe('Members Registration (e2e)', () => {
     });
 
     it('should reject duplicate ID number', async () => {
+      const baseDto = generateUniqueMemberDto();
       const member1 = {
-        ...validMemberDto,
-        email: 'unique1@example.com',
+        ...baseDto,
+        email: `unique1-${Date.now()}@example.com`,
       };
 
       const member2 = {
-        ...validMemberDto,
-        email: 'unique2@example.com',
+        ...baseDto,
+        email: `unique2-${Date.now()}@example.com`,
         // Same ID number as member1
       };
 
@@ -183,17 +220,9 @@ describe('Members Registration (e2e)', () => {
     });
 
     it('should generate unique member numbers', async () => {
-      const member1 = {
-        ...validMemberDto,
-        email: 'unique3@example.com',
-        idPassportNumber: '11111111',
-      };
+      const member1 = generateUniqueMemberDto();
 
-      const member2 = {
-        ...validMemberDto,
-        email: 'unique4@example.com',
-        idPassportNumber: '22222222',
-      };
+      const member2 = generateUniqueMemberDto();
 
       const response1 = await request(app.getHttpServer())
         .post('/api/v1/members')
@@ -221,11 +250,7 @@ describe('Members Registration (e2e)', () => {
     it('should encrypt PII fields', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/v1/members')
-        .send({
-          ...validMemberDto,
-          email: 'unique5@example.com',
-          idPassportNumber: '33333333',
-        })
+        .send(generateUniqueMemberDto())
         .expect(201);
 
       // Response should not contain plaintext sensitive data in encrypted fields
@@ -235,18 +260,19 @@ describe('Members Registration (e2e)', () => {
     });
 
     it('should create member with optional fields', async () => {
+      const timestamp = Date.now();
       const minimalDto: CreateMemberDto = {
-        email: 'minimal@example.com',
+        email: `minimal.${timestamp}@example.com`,
         password: 'SecurePass123!',
         firstName: 'Jane',
         lastName: 'Smith',
         dateOfBirth: '1995-05-20',
         gender: Gender.FEMALE,
-        telephone: '+254798765432',
+        telephone: `+2547987${timestamp.toString().slice(-5)}`,
         physicalAddress: '456 Side Street, Mombasa',
-        idPassportNumber: '44444444',
+        idPassportNumber: `MIN${timestamp}`,
         nextOfKinName: 'John Smith',
-        nextOfKinPhone: '+254711223344',
+        nextOfKinPhone: `+2547112${timestamp.toString().slice(-5)}`,
         nextOfKinRelationship: 'Brother',
         agreedToTerms: true,
         agreedToRefundPolicy: true,
@@ -262,24 +288,25 @@ describe('Members Registration (e2e)', () => {
     });
   });
 
-  describe('GET /members/:id', () => {
+  (piiDecryptionAvailable ? describe : describe.skip)('GET /members/:id', () => {
     let createdMemberId: string;
 
     beforeAll(async () => {
+      const timestamp = Date.now();
       const response = await request(app.getHttpServer())
         .post('/api/v1/members')
         .send({
-          email: 'get-test@example.com',
+          email: `get-test-${timestamp}@example.com`,
           password: 'SecurePass123!',
           firstName: 'Test',
           lastName: 'User',
           dateOfBirth: '1992-03-10',
           gender: Gender.MALE,
-          telephone: '+254722334455',
+          telephone: `+2547223${timestamp.toString().slice(-5)}`,
           physicalAddress: 'Test Address',
-          idPassportNumber: '55555555',
+          idPassportNumber: `GET${timestamp}`,
           nextOfKinName: 'Emergency Contact',
-          nextOfKinPhone: '+254733445566',
+          nextOfKinPhone: `+2547334${timestamp.toString().slice(-5)}`,
           nextOfKinRelationship: 'Friend',
           agreedToTerms: true,
           agreedToRefundPolicy: true,

@@ -281,6 +281,48 @@ Authorization: Bearer {accessToken}
 
 ---
 
+## 🧾 Receipts & Verification
+
+Base URL: `http://localhost:4000/api/v1`
+
+### 1. Download Teller Receipt PDF
+```http
+GET /receipts/transaction/{receiptNumber}.pdf
+Authorization: Bearer {accessToken}
+Roles: CLERK, TREASURER, MANAGER, ADMIN, SECRETARY, CHAIRMAN
+```
+
+- Streams a PDF rendered via Puppeteer using receipt HTML templates
+- Embeds QR code pointing to `/verify/receipt/{receiptNumber}`
+- Returns `404` when the receipt number does not exist
+
+### 2. Download Member Statement PDF
+```http
+GET /receipts/statement/{memberId}.pdf?s=2024-01-01&e=2024-12-31&type=SAVINGS_DEPOSIT
+Authorization: Bearer {accessToken}
+Roles: MEMBER (own statements) + all teller/admin roles
+```
+
+- Reuses the member statement service and renders a PDF with totals and ledger entries
+- Members may only download their own statements; staff roles can download for any member
+
+### 3. Public Receipt Verification
+```http
+GET /verify/receipt/{receiptNumber}
+```
+
+- No authentication required; guarded by global throttler
+- Returns `{ receiptNumber, memberName, memberNumber, amount, tellerEmail, valueDate, verifiedAt }`
+- Used by QR scans and the web `verify/receipt/:receiptNumber` page to confirm origin of a receipt
+
+**Implementation notes**
+- New `ReceiptsModule` mounts the controller/service and shares Prisma + MembersService
+- Service uses `@sparticuz/chromium`, `puppeteer-core`, and `qrcode` to produce PDFs and QR payloads
+- Templates live in `apps/api/src/receipts/templates` and are bundled via `nest-cli` assets config
+- Production deploys must either (a) set `PUPPETEER_EXECUTABLE_PATH` to a system Chrome/Chromium binary or (b) run inside a container image that includes a compatible headless Chrome build. See `apps/api/.env.example` for sample paths.
+
+---
+
 ## 📊 Database Schema
 
 ### Key Tables Created:

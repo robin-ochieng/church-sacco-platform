@@ -16,17 +16,37 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      // TODO: Implement actual authentication with Supabase
-      // Placeholder for now
-      console.log('Sign in attempt:', { email });
+      // Call the backend authentication API
+      const response = await fetch('http://localhost:4000/api/v1/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for session
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Authentication failed');
+      }
+
+      const userData = await response.json();
+
+      // Persist auth payload for guarded routes
+      const normalizedUser = userData.user ?? userData;
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
+      if (userData.accessToken) {
+        localStorage.setItem('accessToken', userData.accessToken);
+      }
+      if (userData.refreshToken) {
+        localStorage.setItem('refreshToken', userData.refreshToken);
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect to callback page (placeholder)
+      // Redirect to callback page for role-based routing
       router.push('/auth/callback');
-    } catch (err) {
-      setError('Authentication failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -20,6 +20,13 @@ if (!process.env.DATABASE_URL) {
   config({ path: regularEnvPath });
 }
 
+// Set default PII_ENCRYPTION_KEY if not present (for tests only)
+// In production, this MUST be set via environment variables
+if (!process.env.PII_ENCRYPTION_KEY) {
+  process.env.PII_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  console.warn('⚠️  Using default PII_ENCRYPTION_KEY for tests. DO NOT use in production!');
+}
+
 // Verify required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',

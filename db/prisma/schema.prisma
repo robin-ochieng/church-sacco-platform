@@ -21,6 +21,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   member Member?
+  cashierTransactions Transaction[] @relation("CashierTransactions")
 
   @@map("User")
 }
@@ -31,6 +32,8 @@ enum UserRole {
   TREASURER
   SECRETARY
   CHAIRMAN
+  CLERK
+  MANAGER
 }
 
 // SACCO Members
@@ -105,6 +108,7 @@ model Member {
   contributions Contribution[]
   beneficiaries Beneficiary[]  // Multiple beneficiaries from Reg.01B
   kyc           MemberKyc?     // KYC documents
+  transactions  Transaction[]
 
   @@index([idLast4])
   @@index([phoneLast4])
@@ -165,6 +169,7 @@ model Saving {
   maturityDate DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+  branchId     String?
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
@@ -187,6 +192,7 @@ model Share {
   purchaseDate   DateTime @default(now())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  branchId       String?
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
@@ -214,6 +220,7 @@ model Loan {
   collateralDescription String?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
+  branchId              String?
 
   member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
   repayments Repayment[]
@@ -244,6 +251,7 @@ model Repayment {
   receiptNumber   String   @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  branchId        String?
 
   loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
@@ -262,6 +270,7 @@ model Contribution {
   description      String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  branchId         String?
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
@@ -273,4 +282,54 @@ enum ContributionType {
   QUARTERLY
   ANNUAL
   SPECIAL
+}
+
+enum TransactionType {
+  SAVINGS_DEPOSIT
+  SHARES_DEPOSIT
+  SPECIAL_CONTRIBUTION
+  MAINTENANCE_FEE
+  MONTHLY_CHARGE
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  POSTED
+  REVERSED
+}
+
+enum TransactionChannel {
+  CASH
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+  SYSTEM
+}
+
+model Transaction {
+  id            String             @id @default(cuid())
+  memberId      String
+  cashierId     String?
+  branchId      String?
+  amount        Decimal            @db.Decimal(12, 2)
+  type          TransactionType
+  channel       TransactionChannel
+  status        TransactionStatus  @default(POSTED)
+  reference     String?
+  narration     String?
+  receiptNumber String?            @unique
+  valueDate     DateTime           @default(now())
+  balanceAfter  Decimal            @default(0) @db.Decimal(14, 2)
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  member  Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  cashier User?  @relation("CashierTransactions", fields: [cashierId], references: [id])
+
+  @@index([memberId])
+  @@index([branchId, valueDate])
+  @@map("Transaction")
 }

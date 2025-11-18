@@ -107,7 +107,9 @@ export class SupabaseService implements OnModuleInit, OnModuleDestroy {
 
     const client = await this.pool.connect();
     try {
-      await client.query('SET app.pii_key = $1', [this.piiEncryptionKey]);
+      // PostgreSQL SET command doesn't support parameterized queries
+      const escapedKey = this.piiEncryptionKey.replace(/'/g, "''");
+      await client.query(`SET LOCAL app.pii_key = '${escapedKey}'`);
       return await callback(client);
     } finally {
       if (this.piiEncryptionKey) {

@@ -8,22 +8,52 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
-    // TODO: Implement actual authentication callback handling
-    // This is a placeholder for Supabase auth callback
     const handleCallback = async () => {
       try {
-        // Simulate processing callback
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Get user data from localStorage
+        const userDataString = localStorage.getItem('user');
+        
+        if (!userDataString) {
+          throw new Error('No user data found');
+        }
+
+        const userData = JSON.parse(userDataString);
+        const userRole = userData.user?.role || userData.role;
+        
+        if (!userRole) {
+          throw new Error('User role not found');
+        }
         
         setStatus('success');
         
-        // Redirect to dashboard after successful authentication
+        // Redirect based on user role
         setTimeout(() => {
-          router.push('/');
+          switch (userRole) {
+            case 'ADMIN':
+            case 'MANAGER':
+              router.push('/admin');
+              break;
+            case 'TREASURER':
+            case 'CLERK':
+              router.push('/teller');
+              break;
+            case 'SECRETARY':
+              router.push('/secretary');
+              break;
+            case 'CHAIRMAN':
+              router.push('/chairman');
+              break;
+            case 'MEMBER':
+            default:
+              router.push('/member');
+              break;
+          }
         }, 1000);
       } catch (error) {
         console.error('Auth callback error:', error);
         setStatus('error');
+        // Clear invalid data
+        localStorage.removeItem('user');
       }
     };
 

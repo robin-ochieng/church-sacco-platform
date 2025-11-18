@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { KycDocumentType, uploadKycDocument } from '../lib/api/kyc';
 import { registerMember, type RegistrationData } from '../lib/api/members';
-import { uploadKycDocument, KycDocumentType } from '../lib/api/kyc';
 
 interface KycFiles {
   idFront?: File | null;

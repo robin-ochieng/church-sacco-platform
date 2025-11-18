@@ -276,3 +276,5 @@ export class MemberQueryDto {
   @Type(() => Number)
   limit?: number;
 }
+
+export * from './statement.dto';

@@ -20,6 +20,12 @@ export default function Home() {
             Sign In
           </Link>
           <Link
+            href="/teller"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            Teller (Deposits)
+          </Link>
+          <Link
             href="/health"
             className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
           >

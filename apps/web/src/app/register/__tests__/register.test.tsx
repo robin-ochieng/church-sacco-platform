@@ -48,8 +48,8 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/first name is required/i)).toBeInTheDocument();
-        expect(screen.getByText(/last name is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/first name must be at least 2 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/last name must be at least 2 characters/i)).toBeInTheDocument();
       });
     });
 
@@ -64,7 +64,7 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/telephone must be in E\.164 format/i)).toBeInTheDocument();
+        expect(screen.getByText(/phone must be in format \+254/i)).toBeInTheDocument();
       });
     });
 
@@ -82,7 +82,7 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/must be at least 18 years old/i)).toBeInTheDocument();
+        expect(screen.getByText(/you must be at least 18 years old/i)).toBeInTheDocument();
       });
     });
 
@@ -94,7 +94,7 @@ describe('Member Registration Wizard', () => {
       await user.type(screen.getByLabelText(/first name/i), 'John');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
       await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
-      await user.click(screen.getByLabelText(/male/i));
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
 
       const nextButton = screen.getByRole('button', { name: /next/i });
@@ -116,7 +116,7 @@ describe('Member Registration Wizard', () => {
       await user.type(screen.getByLabelText(/first name/i), 'John');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
       await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
-      await user.click(screen.getByLabelText(/male/i));
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
       await user.click(screen.getByRole('button', { name: /next/i }));
 
@@ -132,7 +132,7 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/physical address is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/please provide a complete address/i)).toBeInTheDocument();
       });
     });
 
@@ -171,7 +171,7 @@ describe('Member Registration Wizard', () => {
       await user.type(screen.getByLabelText(/first name/i), 'John');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
       await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
-      await user.click(screen.getByLabelText(/male/i));
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
       await user.click(screen.getByRole('button', { name: /next/i }));
 
@@ -192,8 +192,10 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/id number is required/i)).toBeInTheDocument();
-        expect(screen.getByText(/next of kin name is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/id\/passport number must be at least 5 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/next of kin name must be at least 2 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/next of kin phone must be in format \+254/i)).toBeInTheDocument();
+        expect(screen.getByText(/relationship must be at least 2 characters/i)).toBeInTheDocument();
       });
     });
 
@@ -207,7 +209,7 @@ describe('Member Registration Wizard', () => {
       await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/must be in ATSC-YYYY-NNNN format/i)).toBeInTheDocument();
+        expect(screen.getByText(/referee member number must be in format ATSC-YYYY-NNNN/i)).toBeInTheDocument();
       });
     });
 
@@ -238,7 +240,7 @@ describe('Member Registration Wizard', () => {
       await user.type(screen.getByLabelText(/first name/i), 'John');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
       await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
-      await user.click(screen.getByLabelText(/male/i));
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
       await user.click(screen.getByRole('button', { name: /next/i }));
 
@@ -259,11 +261,17 @@ describe('Member Registration Wizard', () => {
     });
 
     it('should display all entered information for review', () => {
-      expect(screen.getByText(/John/)).toBeInTheDocument();
-      expect(screen.getByText(/Doe/)).toBeInTheDocument();
-      expect(screen.getByText(/\+254712345678/)).toBeInTheDocument();
+      const nameRow = screen.getByText(/Name:/i).parentElement;
+      const phoneRow = screen.getByText(/Phone:/i).parentElement;
+      const idRow = screen.getByText(/ID Number:/i).parentElement;
+      const nextOfKinRow = screen.getByText(/Next of Kin:/i).parentElement;
+
+      expect(nameRow).toHaveTextContent('John');
+      expect(nameRow).toHaveTextContent('Doe');
+      expect(phoneRow).toHaveTextContent('+254712345678');
       expect(screen.getByText(/123 Main St/)).toBeInTheDocument();
-      expect(screen.getByText(/12345678/)).toBeInTheDocument();
+      expect(idRow).toHaveTextContent('12345678');
+      expect(nextOfKinRow).toHaveTextContent('Jane Doe');
     });
 
     it('should validate email and password fields', async () => {
@@ -273,8 +281,8 @@ describe('Member Registration Wizard', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-        expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/invalid email format/i)).toBeInTheDocument();
+        expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
       });
     });
 
@@ -289,7 +297,7 @@ describe('Member Registration Wizard', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
+        expect(screen.getByText(/passwords don't match/i)).toBeInTheDocument();
       });
     });
 
@@ -304,7 +312,8 @@ describe('Member Registration Wizard', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/must agree to terms/i)).toBeInTheDocument();
+        expect(screen.getByText(/you must agree to the terms and conditions/i)).toBeInTheDocument();
+        expect(screen.getByText(/you must agree to the refund policy/i)).toBeInTheDocument();
       });
     });
 
@@ -312,11 +321,15 @@ describe('Member Registration Wizard', () => {
       const user = userEvent.setup();
 
       mockRegisterMember.mockResolvedValue({
-        id: '123',
-        memberNumber: 'ATSC-2024-0001',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john@example.com',
+        message: 'Registration successful',
+        member: {
+          id: '123',
+          memberNumber: 'ATSC-2024-0001',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+        },
+        access_token: 'mock-token',
       });
 
       await user.type(screen.getByLabelText(/^email address/i), 'john@example.com');
@@ -390,6 +403,9 @@ describe('Member Registration Wizard', () => {
 
       // Fill step 1
       await user.type(screen.getByLabelText(/first name/i), 'John');
+      await user.type(screen.getByLabelText(/last name/i), 'Doe');
+      await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
       await user.click(screen.getByRole('button', { name: /next/i }));
 
@@ -414,7 +430,7 @@ describe('Member Registration Wizard', () => {
       await user.type(screen.getByLabelText(/first name/i), 'John');
       await user.type(screen.getByLabelText(/last name/i), 'Doe');
       await user.type(screen.getByLabelText(/date of birth/i), '1990-01-01');
-      await user.click(screen.getByLabelText(/male/i));
+      await user.click(screen.getByLabelText(/^Male$/i));
       await user.type(screen.getByLabelText(/telephone/i), '+254712345678');
       await user.click(screen.getByRole('button', { name: /next/i }));
 

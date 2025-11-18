@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Member Statement • {{appName}}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      padding: 24px 32px;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 35px rgba(15, 23, 42, 0.08);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .summary span {
+      font-size: 13px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .summary strong {
+      font-size: 16px;
+      color: #0f172a;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      font-size: 12px;
+    }
+
+    td.amount {
+      text-align: right;
+      font-weight: 600;
+    }
+
+    td.debit {
+      color: #dc2626;
+    }
+
+    td.credit {
+      color: #059669;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .empty {
+      text-align: center;
+      font-style: italic;
+      color: #94a3b8;
+    }
+
+    footer {
+      margin-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    footer img {
+      width: 120px;
+      height: 120px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <div>
+        <h1>{{appName}} Statement</h1>
+        <div class="summary">
+          <div>
+            <span>Member</span>
+            <strong>{{memberName}}</strong>
+          </div>
+          <div>
+            <span>Number</span>
+            <strong>{{memberNumber}}</strong>
+          </div>
+          <div>
+            <span>Email</span>
+            <strong>{{memberEmail}}</strong>
+          </div>
+          <div>
+            <span>Period</span>
+            <strong>{{period}}</strong>
+          </div>
+          <div>
+            <span>Generated</span>
+            <strong>{{generatedAt}}</strong>
+          </div>
+        </div>
+      </div>
+      <div>
+        <img src="{{qrCode}}" alt="Portal QR" />
+        <div style="text-align:center; font-size:12px; color:#94a3b8;">Scan to view statement online</div>
+      </div>
+    </header>
+
+    <section class="summary">
+      <div>
+        <span>Opening Balance</span>
+        <strong>{{openingBalance}}</strong>
+      </div>
+      <div>
+        <span>Closing Balance</span>
+        <strong>{{closingBalance}}</strong>
+      </div>
+      <div>
+        <span>Total Deposits</span>
+        <strong>{{totalDeposits}}</strong>
+      </div>
+      <div>
+        <span>Total Withdrawals</span>
+        <strong>{{totalWithdrawals}}</strong>
+      </div>
+      <div>
+        <span>Transactions</span>
+        <strong>{{transactionCount}}</strong>
+      </div>
+    </section>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Reference</th>
+          <th>Narration</th>
+          <th>Debit</th>
+          <th>Credit</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{transactionsRows}}
+      </tbody>
+    </table>
+
+    <footer>
+      <div>
+        Statement generated automatically by {{appName}}. For official confirmation, cross-check with portal entry at {{portalUrl}}.
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

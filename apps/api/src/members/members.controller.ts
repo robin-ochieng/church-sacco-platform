@@ -1,20 +1,20 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  HttpCode,
-  HttpStatus,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    Post,
+    Put,
+    Query,
+    UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { MembersService } from './members.service';
-import { CreateMemberDto, UpdateMemberDto, MemberQueryDto } from './dto';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateMemberDto, MemberQueryDto, StatementQueryDto, StatementResponseDto, UpdateMemberDto } from './dto';
+import { MembersService } from './members.service';
 
 @ApiTags('Members')
 @ApiBearerAuth('JWT-auth')
@@ -116,5 +116,25 @@ export class MembersController {
   @ApiResponse({ status: 404, description: 'Member not found' })
   async getMemberShares(@Param('id') id: string) {
     return this.membersService.getMemberShares(id);
+  }
+
+  @Get(':id/statement')
+  @ApiOperation({ summary: 'Get member savings ledger and statement' })
+  @ApiParam({ name: 'id', description: 'Member UUID' })
+  @ApiQuery({ name: 's', required: false, description: 'Start date (YYYY-MM-DD)', example: '2024-01-01' })
+  @ApiQuery({ name: 'e', required: false, description: 'End date (YYYY-MM-DD)', example: '2024-12-31' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filter by transaction type', enum: ['SAVINGS_DEPOSIT', 'SHARES_DEPOSIT', 'SPECIAL_CONTRIBUTION', 'MAINTENANCE_FEE', 'WITHDRAWAL', 'ADJUSTMENT'] })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Returns member statement with running balance',
+    type: StatementResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
+  async getStatement(
+    @Param('id') id: string,
+    @Query() query: StatementQueryDto,
+  ) {
+    return this.membersService.getStatement(id, query);
   }
 }

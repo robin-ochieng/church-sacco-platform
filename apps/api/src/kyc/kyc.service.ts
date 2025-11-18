@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { SupabaseService } from '../supabase/supabase.service';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { RequestUploadUrlDto, UploadUrlResponseDto } from './dto';
 
 @Injectable()

@@ -3,7 +3,7 @@ import { Controller, Get, INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import * as request from 'supertest';
+import request from 'supertest';
 
 // Test controller with a simple endpoint
 @Controller('test-throttle')

@@ -124,6 +124,42 @@ church-sacco-platform/
 - **[class-validator](https://github.com/typestack/class-validator)** - Decorator-based validation
 - **[class-transformer](https://github.com/typestack/class-transformer)** - Object transformation
 
+### Job Queue & Background Processing
+
+- **[BullMQ](https://docs.bullmq.io/)** - Redis-based job queue
+  - Job scheduling and processing
+  - Retry logic with exponential backoff
+  - Job status tracking
+  - Persistent job storage
+
+- **[Redis](https://redis.io/)** - In-memory data store
+  - Queue backend for BullMQ
+  - Session storage (planned)
+  - Caching layer (planned)
+
+- **[@nestjs/schedule](https://docs.nestjs.com/techniques/task-scheduling)** - Task scheduling
+  - Cron jobs
+  - Interval-based tasks
+  - Timeout-based tasks
+
+### PDF Generation & Document Processing
+
+- **[Puppeteer](https://pptr.dev/)** - Headless browser automation
+  - HTML to PDF conversion
+  - Receipt generation
+  - Statement generation
+  - Server-side rendering
+
+- **[@sparticuz/chromium](https://github.com/Sparticuz/chromium)** - Optimized Chromium binary
+  - AWS Lambda compatible
+  - Smaller footprint than full Chrome
+  - Production-ready
+
+- **[QRCode](https://github.com/soldair/node-qrcode)** - QR code generation
+  - Receipt verification QR codes
+  - Member portal links
+  - Data URL format for embedding
+
 ## 🗄️ Database & ORM
 
 ### Database
@@ -196,6 +232,35 @@ church-sacco-platform/
   - Monorepo support
 
 ## 🧪 Testing
+
+### Testing Libraries
+
+- **[Jest](https://jestjs.io/)** - Testing framework
+  - Unit tests
+  - Integration tests
+  - E2E tests
+  - Code coverage
+
+- **[React Testing Library](https://testing-library.com/react)** - Frontend testing
+  - Component testing
+  - User interaction testing
+  - Accessibility testing
+
+- **[Supertest](https://github.com/visionmedia/supertest)** - HTTP assertions
+  - API endpoint testing
+  - Integration testing
+
+### Test Coverage (Current)
+
+- **Backend API**: 40+ tests
+  - P1.3 Manual Deposits: 40 tests (18 unit + 22 E2E)
+  - P1.4 Statement API: 16 E2E tests
+  - P1.5 Monthly Charges: 12 tests (8 unit + 4 integration)
+
+- **Frontend**: 16+ tests
+  - P1.3 Teller Interface: 16 RTL tests
+
+- **Total**: 70+ comprehensive tests across the platform
 
 ### Unit Testing
 

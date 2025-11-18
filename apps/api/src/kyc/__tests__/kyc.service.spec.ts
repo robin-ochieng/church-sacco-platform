@@ -1,10 +1,10 @@
 /// <reference types="jest" />
-import { Test, TestingModule } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { KycService } from '../kyc.service';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SupabaseService } from '../../supabase/supabase.service';
 import { KycDocumentType } from '../dto';
+import { KycService } from '../kyc.service';
 
 describe('KycService', () => {
   let service: KycService;

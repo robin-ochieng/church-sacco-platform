@@ -147,10 +147,20 @@ Build a platform that can grow from a single church SACCO to support multiple br
 ### Automated Systems
 
 - ✅ **Receipt Generation**
-  - Format: `BR{branch}-YYYYMM-{NNNNN}`
-  - Auto-generated on transactions
+  - Format: `RCP-YYYY-NNNNNN` (universal) or `BR{branch}-YYYYMM-{NNNNN}` (branch-specific)
+  - Auto-generated on all transactions
   - Immutable (cannot be changed)
   - Concurrency-safe sequences
+  - PDF generation with QR codes
+  - Puppeteer + Chromium for rendering
+  - Print-ready receipts
+
+- ✅ **Monthly Charge Automation**
+  - KES 100 monthly charge for all active members
+  - Automated scheduling (1st of month at 02:00 EAT)
+  - BullMQ job queue with Redis
+  - Retry logic and duplicate prevention
+  - Admin API for manual execution
 
 - ✅ **Audit Trail**
   - Complete change history
@@ -195,7 +205,42 @@ Build a platform that can grow from a single church SACCO to support multiple br
 
 ## 🛣️ Roadmap
 
-### Phase 0 (Current) - Foundation ✅
+### Phase 0 - Foundation ✅ COMPLETE
+
+- [x] Database schema design
+- [x] PII encryption implementation
+- [x] Audit trail system
+- [x] Receipt generation system
+- [x] Authentication & authorization
+- [x] Row-level security policies
+
+### Phase 1 - Core Features ✅ COMPLETE
+
+#### P1.3 - Manual Deposit System ✅
+- [x] Backend API (3 endpoints)
+- [x] Frontend teller interface
+- [x] Multi-channel support (Cash, M-Pesa, Bank, Cheque)
+- [x] Real-time member search
+- [x] Receipt generation & printing
+- [x] 56 comprehensive tests (40 backend + 16 frontend)
+
+#### P1.4 - Savings Ledger & Statement API ✅
+- [x] Statement generation endpoint
+- [x] Server-side running balance calculation
+- [x] Date range filtering
+- [x] Transaction type filtering
+- [x] Opening/closing balance calculation
+- [x] 16 E2E tests with seeded data
+
+#### P1.5 - Monthly Charge Automation ✅
+- [x] Automated KES 100 monthly charges
+- [x] BullMQ job queue with Redis
+- [x] Cron scheduler (1st of month at 02:00 EAT)
+- [x] Admin API for manual execution
+- [x] Duplicate prevention & retry logic
+- [x] Comprehensive audit trail
+
+### Phase 0 (Legacy Reference) - Foundation ✅
 
 - [x] Database schema design
 - [x] PII encryption implementation
