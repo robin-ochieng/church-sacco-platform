@@ -14,6 +14,7 @@ import { MonthlyChargesModule } from './monthly-charges/monthly-charges.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { TellerModule } from './teller/teller.module';
 import { UsersModule } from './users/users.module';
 
 // Build module imports conditionally based on environment
@@ -48,6 +49,7 @@ const imports: any[] = [
   CashierModule,
   ReceiptsModule,
   MonthlyChargesModule,
+  TellerModule,
 ];
 
 // Only enable rate limiting in non-test environments

@@ -72,6 +72,9 @@ export const envValidationSchema = Joi.object({
     .positive()
     .default(10)
     .description('Max requests per time window'),
+  BANK_TIMEZONE: Joi.string()
+    .default('Africa/Nairobi')
+    .description('IANA timezone identifier for teller reporting windows'),
 });
 
 /**
@@ -93,4 +96,5 @@ export interface EnvironmentVariables {
   PII_ENCRYPTION_KEY: string;
   THROTTLE_TTL: number;
   THROTTLE_LIMIT: number;
+  BANK_TIMEZONE: string;
 }

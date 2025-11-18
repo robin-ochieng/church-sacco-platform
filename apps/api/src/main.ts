@@ -12,8 +12,10 @@ async function bootstrap() {
   
   // Security: Strict CORS configuration
   const webOrigin = process.env.WEB_ORIGIN || 'http://localhost:3000';
+  const allowedOrigins = [webOrigin, 'http://localhost:3001', 'http://localhost:3000'];
+  
   app.enableCors({
-    origin: webOrigin,
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

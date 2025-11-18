@@ -150,6 +150,18 @@ Comprehensive documentation including:
   - Returns 404 for unknown/expired receipt numbers
   - Intended for read-only verification, no PII beyond member display name
 
+### 10. Teller Summary Endpoint
+
+- **Route**: `GET /api/v1/teller/summary`
+- **Visibility**: JWT protected, teller/ops roles only
+- **Purpose**: Serves aggregated totals, top members, recent receipts, and close-day dry-run metadata for the teller dashboard.
+- **Data Protections**:
+  - Query parameters validated via `GetTellerSummaryQueryDto` (`date` ISO string, `limit` 1-50)
+  - Timezone normalization driven by `BANK_TIMEZONE` env to avoid cross-branch leakage
+  - Amounts returned as formatted decimal strings to prevent floating-point drift in clients
+  - Summaries and close-day readiness computed via read-only Prisma queries; no mutations performed
+  - Endpoint documented for ops teams and logged through standard Nest exception filters
+
 ## Files Created/Modified
 
 ### Created:
