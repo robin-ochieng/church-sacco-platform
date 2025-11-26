@@ -1,6 +1,7 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// Validated for Prisma 5.22.0
 generator client {
   provider = "prisma-client-js"
 }
@@ -109,6 +110,7 @@ model Member {
   beneficiaries Beneficiary[]  // Multiple beneficiaries from Reg.01B
   kyc           MemberKyc?     // KYC documents
   transactions  Transaction[]
+  guaranteesGiven Guarantor[]  @relation("GuarantorMember") // Loans this member has guaranteed
 
   @@index([idLast4])
   @@index([phoneLast4])
@@ -201,40 +203,129 @@ model Share {
 
 // Loans
 model Loan {
-  id                    String      @id
+  id                    String      @id @default(cuid())
   memberId              String
   loanNumber            String      @unique
   amount                Decimal     @db.Decimal(10, 2)
   interestRate          Decimal     @db.Decimal(5, 2)
   durationMonths        Int
-  status                LoanStatus  @default(PENDING)
+  status                LoanStatus  @default(DRAFT)
   purpose               String
   applicationDate       DateTime    @default(now())
   approvalDate          DateTime?
   disbursementDate      DateTime?
-  balance               Decimal     @db.Decimal(10, 2)
-  monthlyPayment        Decimal     @db.Decimal(10, 2)
-  guarantorName         String
-  guarantorPhone        String
-  guarantorNationalId   String
+  balance               Decimal     @default(0) @db.Decimal(10, 2)
+  monthlyPayment        Decimal?    @db.Decimal(10, 2)
+  
+  // Application Details
+  monthlyIncome         Decimal     @db.Decimal(10, 2)
+  sourceOfIncome        String
+  processingFee         Decimal?    @db.Decimal(10, 2)
+  insuranceFee          Decimal?    @db.Decimal(10, 2)
+  disbursementMode      String?     // "NET" or "GROSS"
+
+  // Approval & Disbursement Details
+  approvedBy            String?     // User ID of approver (chairman/secretary/treasurer)
+  disbursedBy           String?     // User ID of disburser
+  disbursementReceiptNo String?     // Receipt number for disbursement
+  netDisbursedAmount    Decimal?    @db.Decimal(10, 2)  // Amount actually disbursed after deductions
+  arrearsDeducted       Decimal?    @db.Decimal(10, 2)  // Any arrears deducted from disbursement
+  savingsDeducted       Decimal?    @db.Decimal(10, 2)  // Optional savings deduction
+  sharesDeducted        Decimal?    @db.Decimal(10, 2)  // Optional shares deduction
+
+  // Guarantor Details (Optional at application stage)
+  guarantorName         String?
+  guarantorPhone        String?
+  guarantorNationalId   String?
   collateralDescription String?
+  
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   branchId              String?
 
-  member     Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  repayments Repayment[]
+  member       Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  repayments   Repayment[]
+  guarantors   Guarantor[]
+  schedules    LoanSchedule[]
 
   @@map("Loan")
 }
 
-enum LoanStatus {
+// Loan Guarantors
+model Guarantor {
+  id                  String          @id @default(cuid())
+  loanId              String
+  guarantorMemberId   String          // Member who is guaranteeing
+  amountGuaranteed    Decimal         @db.Decimal(10, 2)
+  status              GuarantorStatus @default(PENDING)
+  signatureKey        String?         // Supabase Storage key for signature image
+  approvedAt          DateTime?
+  declinedAt          DateTime?
+  declineReason       String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  loan              Loan    @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  guarantorMember   Member  @relation("GuarantorMember", fields: [guarantorMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([loanId, guarantorMemberId]) // A member can only guarantee a loan once
+  @@index([guarantorMemberId])
+  @@index([loanId])
+  @@map("Guarantor")
+}
+
+// Loan Repayment Schedule (Amortization Table)
+model LoanSchedule {
+  id              String              @id @default(cuid())
+  loanId          String
+  installmentNo   Int                 // 1, 2, 3, ... up to durationMonths
+  dueDate         DateTime
+  principalDue    Decimal             @db.Decimal(10, 2)
+  interestDue     Decimal             @db.Decimal(10, 2)
+  penaltyDue      Decimal             @default(0) @db.Decimal(10, 2)
+  principalPaid   Decimal             @default(0) @db.Decimal(10, 2)
+  interestPaid    Decimal             @default(0) @db.Decimal(10, 2)
+  penaltyPaid     Decimal             @default(0) @db.Decimal(10, 2)
+  totalDue        Decimal             @db.Decimal(10, 2)  // principalDue + interestDue + penaltyDue
+  totalPaid       Decimal             @default(0) @db.Decimal(10, 2)
+  balanceAfter    Decimal             @db.Decimal(10, 2)  // Remaining loan balance after this installment
+  status          ScheduleStatus      @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@unique([loanId, installmentNo])
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("LoanSchedule")
+}
+
+enum ScheduleStatus {
+  PENDING     // Not yet due
+  DUE         // Due for payment
+  PARTIAL     // Partially paid
+  PAID        // Fully paid
+  OVERDUE     // Past due date, not fully paid
+}
+
+enum GuarantorStatus {
   PENDING
   APPROVED
-  REJECTED
+  DECLINED
+}
+
+enum LoanStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
   DISBURSED
-  REPAYING
-  COMPLETED
+  ACTIVE
+  CLOSED
+  REJECTED
   DEFAULTED
 }
 
@@ -292,6 +383,8 @@ enum TransactionType {
   MONTHLY_CHARGE
   WITHDRAWAL
   ADJUSTMENT
+  LOAN_DISBURSEMENT
+  LOAN_REPAYMENT
 }
 
 enum TransactionStatus {
@@ -328,8 +421,36 @@ model Transaction {
 
   member  Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
   cashier User?  @relation("CashierTransactions", fields: [cashierId], references: [id])
+  mpesaMessages MpesaMessage[]
 
   @@index([memberId])
   @@index([branchId, valueDate])
   @@map("Transaction")
+}
+
+// M-Pesa Messages
+model MpesaMessage {
+  id             String              @id @default(cuid())
+  mpesaRef       String              @unique // M-Pesa transaction reference (e.g., SAF12345XYZ)
+  msisdn         String              // Phone number that sent money
+  amount         Decimal             @db.Decimal(12, 2)
+  narrative      String?             // Payment narrative/notes
+  rawJson        Json                // Full M-Pesa callback payload
+  matchedTxnId   String?             // Links to Transaction.id when matched
+  status         MpesaMessageStatus  @default(SUSPENSE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  matchedTransaction Transaction? @relation(fields: [matchedTxnId], references: [id])
+
+  @@index([msisdn])
+  @@index([status])
+  @@index([createdAt])
+  @@map("MpesaMessage")
+}
+
+enum MpesaMessageStatus {
+  MATCHED    // Successfully matched to a member and transaction created
+  SUSPENSE   // Could not auto-match (ambiguous or no member found)
+  DUPLICATE  // mpesaRef already processed
 }

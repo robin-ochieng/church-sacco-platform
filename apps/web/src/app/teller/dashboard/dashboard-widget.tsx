@@ -12,6 +12,7 @@ import {
 } from '@/features/teller/dashboard/types';
 import { formatKes } from '@/lib/format';
 import { formatBankDate, formatTimestampForTable } from '@/lib/date';
+import { SuspenseQueueWidget } from './suspense-queue-widget';
 
 interface DashboardWidgetProps {
   initialDate: string;
@@ -99,6 +100,9 @@ export function DashboardWidget({ initialDate }: DashboardWidgetProps) {
               </p>
             )}
           </div>
+          <div className="flex items-center gap-3">
+
+          </div>
           <label className="flex flex-col text-sm text-slate-600">
             <span className="mb-1 font-medium">Date (local)</span>
             <input
@@ -121,6 +125,7 @@ export function DashboardWidget({ initialDate }: DashboardWidgetProps) {
           <DashboardSkeleton />
         ) : (
           <div className="space-y-6">
+            <SuspenseQueueWidget />
             <KpiRow totals={summary.totals} isBusy={isFetching} />
 
             <div className="grid gap-6 lg:grid-cols-3">
@@ -388,10 +393,10 @@ function CloseDayDialog({
         const last = focusable[focusable.length - 1];
         if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
-          last.focus();
+          last?.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
           event.preventDefault();
-          first.focus();
+          first?.focus();
         }
       }
     };

@@ -56,6 +56,12 @@ const supabaseConfigured = !isLocalSupabase && process.env.SUPABASE_URL && proce
       memberA2: { id: 'test-member-a2', memberNumber: 'TMEMA002' },
       memberB1: { id: 'test-member-b1', memberNumber: 'TMEMB001' },
     },
+    transactions: {
+      branchASeed: 'test-branch-a-transaction',
+      branchBSeed: 'test-branch-b-transaction',
+      depositAudit: 'test-deposit-transaction',
+      chargeAudit: 'test-charge-transaction',
+    },
   };
 
   beforeAll(async () => {
@@ -271,6 +277,53 @@ const supabaseConfigured = !isLocalSupabase && process.env.SUPABASE_URL && proce
         const { error } = await adminClient
           .from('Member')
           .upsert(member, { onConflict: 'id' });
+
+        expect(error).toBeNull();
+      }
+    });
+
+    it('should create baseline transactions per branch', async () => {
+      const now = new Date().toISOString();
+
+      const transactions = [
+        {
+          id: testData.transactions.branchASeed,
+          memberId: testData.members.memberA1.id,
+          cashierId: testData.users.clerkA.id,
+          branchId: testData.branches.A,
+          amount: '500.00',
+          balanceAfter: '1500.00',
+          type: 'SAVINGS_DEPOSIT',
+          channel: 'CASH',
+          reference: 'TXN-A-001',
+          narration: 'Seed Branch A transaction',
+          receiptNumber: 'RLS-A-001',
+          valueDate: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: testData.transactions.branchBSeed,
+          memberId: testData.members.memberB1.id,
+          cashierId: testData.users.clerkB.id,
+          branchId: testData.branches.B,
+          amount: '800.00',
+          balanceAfter: '800.00',
+          type: 'SAVINGS_DEPOSIT',
+          channel: 'CASH',
+          reference: 'TXN-B-001',
+          narration: 'Seed Branch B transaction',
+          receiptNumber: 'RLS-B-001',
+          valueDate: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+
+      for (const txn of transactions) {
+        const { error } = await adminClient
+          .from('Transaction')
+          .upsert(txn, { onConflict: 'id' });
 
         expect(error).toBeNull();
       }

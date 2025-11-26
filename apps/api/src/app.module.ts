@@ -9,8 +9,10 @@ import { AuthModule } from './auth/auth.module';
 import { CashierModule } from './cashier/cashier.module';
 import { envValidationSchema } from './config/env.validation';
 import { KycModule } from './kyc/kyc.module';
+import { LoansModule } from './loans/loans.module';
 import { MembersModule } from './members/members.module';
 import { MonthlyChargesModule } from './monthly-charges/monthly-charges.module';
+import { MpesaModule } from './mpesa/mpesa.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { SupabaseModule } from './supabase/supabase.module';
@@ -47,9 +49,11 @@ const imports: any[] = [
   MembersModule,
   KycModule,
   CashierModule,
+  LoansModule,
   ReceiptsModule,
   MonthlyChargesModule,
   TellerModule,
+  MpesaModule,
 ];
 
 // Only enable rate limiting in non-test environments

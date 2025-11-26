@@ -2,13 +2,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { SupabaseService } from '../../supabase/supabase.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService,
-    private readonly supabaseService: SupabaseService,
+    private readonly prismaService: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -19,14 +19,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     // Verify user still exists and is active
-    const supabase = this.supabaseService.getAdminClient();
-    const { data: user, error } = await supabase
-      .from('User')
-      .select('id, email, role, isActive')
-      .eq('id', payload.sub)
-      .single();
+    const user = await this.prismaService.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, role: true, isActive: true },
+    });
 
-    if (error || !user || !user.isActive) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException();
     }
 

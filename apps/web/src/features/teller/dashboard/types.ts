@@ -41,3 +41,14 @@ export interface TellerSummaryResponse {
   recentReceipts: TellerSummaryReceipt[];
   closeDayDryRun: TellerSummaryCloseDayDryRun;
 }
+
+export interface MpesaSuspenseMessage {
+  id: string;
+  mpesaRef: string;
+  msisdn: string;
+  amount: string;
+  narrative: string | null;
+  status: 'SUSPENSE' | 'MATCHED' | 'DUPLICATE';
+  createdAt: string;
+}
+

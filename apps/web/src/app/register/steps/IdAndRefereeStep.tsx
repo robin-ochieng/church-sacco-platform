@@ -44,6 +44,13 @@ export function IdAndRefereeStep({ initialData, onNext, onBack }: IdAndRefereeSt
       error: null,
       filePath: null,
     },
+    [KycDocumentType.SELFIE]: {
+      file: null,
+      uploading: false,
+      uploaded: false,
+      error: null,
+      filePath: null,
+    },
   });
   const {
     register,

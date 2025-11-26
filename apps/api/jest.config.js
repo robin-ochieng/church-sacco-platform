@@ -3,6 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   rootDir: '.',
   testMatch: [
+    '**/src/**/*.spec.ts',
     '**/test/**/*.spec.ts', 
     '**/test/**/*.e2e-spec.ts',
     '**/__tests__/**/*.spec.ts',
@@ -26,4 +27,12 @@ module.exports = {
   },
   testTimeout: 30000, // 30 seconds for integration tests
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+  },
 };

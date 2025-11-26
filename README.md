@@ -1,5 +1,7 @@
 # ACK Thiboro SACCO Platform
 
+[![CI](https://github.com/robin-ochieng/church-sacco-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/robin-ochieng/church-sacco-platform/actions/workflows/ci.yml)
+
 A modern, full-stack monorepo for managing ACK Thiboro SACCO operations, built with TypeScript, Next.js, NestJS, and Prisma.
 
 ## 🏗️ Project Structure
@@ -97,7 +99,7 @@ Or run commands manually:
 ```bash
 pnpm db:generate    # Generate Prisma Client
 pnpm db:migrate     # Run migrations
-pnpm db:seed        # Seed initial data
+pnpm db:seed        # Seed initial data (2 branches, 16 members, transactions, suspense items)
 ```
 
 5. **Set up Git hooks**

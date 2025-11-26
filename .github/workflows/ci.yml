@@ -7,8 +7,23 @@ on:
     branches: [master, main, develop]
 
 jobs:
-  lint-and-typecheck:
+  test-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: sacco_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       
@@ -30,45 +45,46 @@ jobs:
         
       - name: Type check
         run: pnpm typecheck
-        
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        
-      - name: Run tests
-        run: pnpm test
-        
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        
+
+      - name: Setup Database
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/sacco_test
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Run Backend Tests (Unit & Coverage)
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/sacco_test
+          JWT_SECRET: test-secret
+          CI: true
+        run: |
+          cd apps/api
+          pnpm test:cov
+
+      - name: Run Backend E2E Tests
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/sacco_test
+          JWT_SECRET: test-secret
+          CI: true
+        run: |
+          cd apps/api
+          # Run all e2e tests, including seed verification which generates artifacts
+          npx jest --config ./jest.config.js --runInBand
+
+      - name: Run Frontend Tests (RTL & Coverage)
+        run: |
+          cd apps/web
+          pnpm test:coverage
+
       - name: Build
         run: pnpm build
+
+      - name: Upload PDF Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-snapshots
+          path: |
+            apps/api/test/artifacts/*.pdf
+          retention-days: 5

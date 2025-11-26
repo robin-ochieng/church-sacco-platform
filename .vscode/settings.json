@@ -15,5 +15,6 @@
       "source.fixAll.eslint": "explicit",
       "source.organizeImports": "explicit"
     }
-  }
+  },
+  "prisma.prismaFmtBinaryPath": "C:/Users/Robin Ochieng/OneDrive - Kenbright/Gig/React/church-sacco-platform/node_modules/.bin/prisma.cmd"
 }

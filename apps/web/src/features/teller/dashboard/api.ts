@@ -17,3 +17,13 @@ export async function fetchTellerSummary({
 
   return response.data;
 }
+
+export async function fetchMpesaSuspenseMessages(): Promise<import('./types').MpesaSuspenseMessage[]> {
+  const response = await apiClient.get<import('./types').MpesaSuspenseMessage[]>('/mpesa/suspense');
+  return response.data;
+}
+
+export async function resolveMpesaSuspenseMessage(messageId: string, memberId: string): Promise<void> {
+  await apiClient.patch(`/mpesa/suspense/${messageId}/resolve`, { memberId });
+}
+
