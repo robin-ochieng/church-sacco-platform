@@ -2,6 +2,7 @@
   "extends": "../../packages/config/tsconfig.node.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "bundler",
     "target": "ES2022",
     "outDir": "./dist",
     "rootDir": "./src",
